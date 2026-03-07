@@ -1,0 +1,134 @@
+@use '../../../scss/abstracts/variables' as *;
+@use '../../../scss/abstracts/mixins' as *;
+
+.header {
+    background: $color-bg-secondary;
+    border-bottom: 1px solid $color-border;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    padding: 0 $spacing-md;
+    gap: $spacing-lg;
+
+    &__search {
+        position: relative;
+        width: 256px; 
+
+        &-icon {
+            position: absolute;
+            left: $spacing-sm;
+            top: 50%;
+            transform: translateY(-50%);
+            width: $icon-size-sm;
+            height: $icon-size-sm;
+            color: $color-text-secondary;
+        }
+
+        &-input {
+            width: 100%;
+            background: $color-bg-primary;
+            border: 1px solid $color-border;
+            border-radius: $border-radius-sm;
+            height: 36px;
+            padding-left: 36px; 
+            padding-right: $spacing-sm;
+            color: $color-text-primary;
+            font-size: $font-size-sm;
+            font-family: $font-family-sans;
+
+            &:focus {
+                outline: none;
+                border-color: $color-accent;
+            }
+        }
+    }
+
+    &__info {
+        display: flex;
+        align-items: center;
+        gap: $spacing-lg;
+        flex: 1;
+    }
+
+    &__symbol {
+        display: flex;
+        align-items: baseline;
+        gap: $spacing-sm;
+
+        &-name {
+            color: $color-text-primary;
+            font-size: $font-size-md;
+            font-weight: $font-weight-medium;
+            font-family: $font-family-sans;
+        }
+
+        &-price {
+            color: $color-text-primary;
+            font-family: $font-family-mono;
+            font-size: $font-size-xxl;
+            font-weight: $font-weight-medium;
+        }
+    }
+
+    &__stats {
+        display: flex;
+        align-items: center;
+        gap: $spacing-md;
+        font-size: $font-size-md;
+
+        &-item {
+            display: flex;
+            gap: $spacing-xs;
+        }
+
+        &-label {
+            color: $color-text-secondary;
+            font-family: $font-family-sans;
+        }
+
+        &-value {
+            font-family: $font-family-mono;
+            color: $color-text-primary;
+        }
+
+        &-value--positive {
+            color: $color-volume-up;
+        }
+
+        &-value--negative {
+            color: $color-volume-down;
+        }
+    }
+
+    &__connection {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+
+        &-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: $border-radius-circle;
+            &--connected {
+                background: $color-volume-up;
+            }
+
+            &--disconnected {
+                background: $color-volume-down;
+            }
+        }
+
+        &-icon {
+            width: $icon-size-sm;
+            height: $icon-size-sm;
+
+            &--connected {
+                color: $color-volume-up;
+            }
+
+            &--disconnected {
+                color: $color-volume-down;
+            }
+        }
+    }
+}
