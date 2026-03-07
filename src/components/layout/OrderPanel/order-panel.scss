@@ -1,0 +1,207 @@
+@use '../../../scss/abstracts' as *;
+
+.order-panel {
+    width: 256px;
+    background: $color-bg-secondary;
+    border-left: 1px solid $color-border;
+    display: flex;
+    flex-direction: column;
+
+    &--collapsed {
+        width: 48px;
+        align-items: center;
+        padding: $spacing-md 0;
+    }
+
+    &__header {
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 $spacing-md;
+        border-bottom: 1px solid $color-border;
+
+        &-title {
+            color: $color-text-primary;
+            font-weight: $font-weight-medium;
+            font-size: $font-size-sm;
+            font-family: $font-family-sans;
+        }
+
+        &-button {
+            padding: $spacing-xs;
+            border-radius: $border-radius-sm;
+            color: $color-text-secondary;
+            transition: background-color 0.2s ease, color 0.2s ease;
+
+            &:hover {
+                background: $color-bg-tertiary;
+                color: $color-text-primary;
+            }
+
+            svg {
+                width: $icon-size-sm;
+                height: $icon-size-sm;
+            }
+        }
+    }
+
+    &__content {
+        flex: 1;
+        padding: $spacing-md;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-md;
+    }
+
+    &__tabs {
+        display: flex;
+        gap: $spacing-xs;
+    }
+
+    &__tab {
+        flex: 1;
+        padding: $spacing-xs 0;
+        border-radius: $border-radius-sm;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        font-family: $font-family-sans;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease;
+
+        &--buy {
+            background: $color-bg-primary;
+            color: $color-text-secondary;
+
+            &.order-panel__tab--active {
+                background: $color-volume-up;
+                color: white;
+            }
+
+            &:hover:not(.order-panel__tab--active) {
+                background: $color-bg-tertiary;
+            }
+        }
+
+        &--sell {
+            background: $color-bg-primary;
+            color: $color-text-secondary;
+
+            &.order-panel__tab--active {
+                background: $color-volume-down;
+                color: white;
+            }
+
+            &:hover:not(.order-panel__tab--active) {
+                background: $color-bg-tertiary;
+            }
+        }
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+
+        label {
+            color: $color-text-secondary;
+            font-size: $font-size-xs;
+            font-family: $font-family-sans;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            background: $color-bg-primary;
+            border: 1px solid $color-border;
+            border-radius: $border-radius-sm;
+            padding: $spacing-xs $spacing-sm;
+            color: $color-text-primary;
+            font-size: $font-size-sm;
+            font-family: $font-family-mono;
+
+            &:focus {
+                outline: none;
+                border-color: $color-accent;
+            }
+        }
+    }
+
+    &__quantity {
+        display: flex;
+        align-items: center;
+        gap: $spacing-xs;
+
+        input {
+            flex: 1;
+        }
+
+        &-button {
+            padding: $spacing-xs;
+            background: $color-bg-primary;
+            border: 1px solid $color-border;
+            border-radius: $border-radius-sm;
+            color: $color-text-secondary;
+            transition: background-color 0.2s ease;
+
+            &:hover {
+                background: $color-bg-tertiary;
+            }
+
+            svg {
+                width: 12px;
+                height: 12px;
+            }
+        }
+    }
+
+    &__total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: $spacing-sm 0;
+        border-top: 1px solid $color-border;
+
+        &-label {
+            color: $color-text-secondary;
+            font-size: $font-size-xs;
+            font-family: $font-family-sans;
+        }
+
+        &-value {
+            color: $color-text-primary;
+            font-size: $font-size-sm;
+            font-weight: $font-weight-medium;
+            font-family: $font-family-mono;
+        }
+    }
+
+    &__action {
+        width: 100%;
+        padding: $spacing-sm 0;
+        border-radius: $border-radius-sm;
+        font-weight: $font-weight-medium;
+        font-family: $font-family-sans;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &--buy {
+            background: $color-volume-up;
+            color: white;
+
+            &:hover {
+                background: rgba($color-volume-up, 0.9);
+            }
+        }
+
+        &--sell {
+            background: $color-volume-down;
+            color: white;
+
+            &:hover {
+                background: rgba($color-volume-down, 0.9);
+            }
+        }
+    }
+}

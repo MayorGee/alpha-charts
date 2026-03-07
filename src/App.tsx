@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Header } from './components/layout/Header';
 import { Toolbar, type ChartStyle, type DrawingTool } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
+import { OrderPanel } from './components/layout/OrderPanel';
 import type { Symbol } from './types';
 
 const mockSymbols: Symbol[] = [
@@ -53,6 +54,7 @@ function App() {
     const [showGrid, setShowGrid] = useState(true);
     const [selectedSymbol, setSelectedSymbol] = useState<Symbol>(mockSymbols[0]);
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
+    const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
 
     const handleSearch = (query: string) => {
         console.log('Searching:', query);
@@ -100,6 +102,11 @@ function App() {
                 <div className="chart-area">
                     {/* Chart will go here */}
                 </div>
+                <OrderPanel
+                    currentPrice={selectedSymbol.price}
+                    isCollapsed={orderPanelCollapsed}
+                    onToggleCollapse={() => setOrderPanelCollapsed(!orderPanelCollapsed)}
+                />
             </div>
         </div>
     );
