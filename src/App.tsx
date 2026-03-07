@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Header } from './components/layout/Header';
+import { Toolbar, type ChartStyle, type DrawingTool } from './components/layout/Toolbar';
 import type { Symbol } from './types';
 
 const mockSymbol: Symbol = {
@@ -11,8 +13,20 @@ const mockSymbol: Symbol = {
 };
 
 function App() {
+    const [activeTool, setActiveTool] = useState<DrawingTool>('none');
+    const [chartStyle, setChartStyle] = useState<ChartStyle>('candlestick');
+    const [showGrid, setShowGrid] = useState(true);
+
     const handleSearch = (query: string) => {
         console.log('Searching:', query);
+    };
+
+    const handleAddIndicator = () => {
+      console.log('Indicator added');
+    };
+
+    const handleClearDrawings = () => {
+      console.log('Clear drawings');
     };
 
     return (
@@ -21,6 +35,16 @@ function App() {
                 symbol={mockSymbol}
                 onSymbolSearch={handleSearch}
                 isConnected={true}
+            />
+            <Toolbar
+                activeTool={activeTool}
+                onToolChange={setActiveTool}
+                chartStyle={chartStyle}
+                onChartStyleChange={setChartStyle}
+                showGrid={showGrid}
+                onGridToggle={() => setShowGrid(!showGrid)}
+                onAddIndicator={handleAddIndicator}
+                onClearDrawings={handleClearDrawings}
             />
         </div>
     );
