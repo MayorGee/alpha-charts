@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Header } from './components/layout/Header';
-import { Toolbar, type ChartStyle, type DrawingTool } from './components/layout/Toolbar';
+import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
 import { OrderPanel } from './components/layout/OrderPanel';
 import { TimeframeSelector } from './components/layout/TimeframeSelector';
-import type { Symbol } from './types';
+import type { ChartStyle, DrawingTool, Symbol } from './types';
 
 const mockSymbols: Symbol[] = [
     {

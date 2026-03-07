@@ -1,3 +1,4 @@
+import type { TimeframeSelectorProps } from '../../../types/props';
 import './timeframe-selector.scss';
 
 const timeframes = [
@@ -9,11 +10,6 @@ const timeframes = [
     { label: '1D', value: '1d', minutes: 1440 },
     { label: '1W', value: '1w', minutes: 10080 },
 ];
-
-interface TimeframeSelectorProps {
-    selectedTimeframe: string;
-    onSelectTimeframe: (timeframe: string) => void;
-}
 
 export function TimeframeSelector({
     selectedTimeframe,

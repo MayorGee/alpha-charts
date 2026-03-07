@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight, Minus, Plus } from 'lucide-react';
+import type { OrderPanelProps } from '../../../types/props';
 import './order-panel.scss';
-
-interface OrderPanelProps {
-    currentPrice: number;
-    isCollapsed: boolean;
-    onToggleCollapse: () => void;
-}
 
 export function OrderPanel({ currentPrice, isCollapsed, onToggleCollapse }: OrderPanelProps) {
     const [orderType, setOrderType] = useState<'buy' | 'sell'>('buy');

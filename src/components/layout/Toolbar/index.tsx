@@ -9,21 +9,9 @@ import {
     LineChart,
     Settings,
 } from 'lucide-react';
+import type { ToolbarProps } from '../../../types/props';
+import type { DrawingTool } from '../../../types';
 import './toolbar.scss';
-
-export type DrawingTool = 'trendline' | 'horizontal' | 'vertical' | 'none';
-export type ChartStyle = 'candlestick' | 'line';
-
-interface ToolbarProps {
-    activeTool: DrawingTool;
-    onToolChange: (tool: DrawingTool) => void;
-    chartStyle: ChartStyle;
-    onChartStyleChange: (style: ChartStyle) => void;
-    showGrid: boolean;
-    onGridToggle: () => void;
-    onAddIndicator: () => void;
-    onClearDrawings: () => void;
-}
 
 export function Toolbar({
     activeTool,

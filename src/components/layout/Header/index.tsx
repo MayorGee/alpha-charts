@@ -1,12 +1,6 @@
 import { Search, Wifi } from 'lucide-react';
-import type { Symbol } from '../../../types/index';
+import type { HeaderProps } from '../../../types/props';
 import './header.scss';
-
-interface HeaderProps {
-    symbol: Symbol;
-    onSymbolSearch: (query: string) => void;
-    isConnected: boolean;
-}
 
 export function Header({ symbol, onSymbolSearch, isConnected }: HeaderProps) {
     const changeClass = symbol.change24h >= 0 ? 'header__stats-value--positive' : 'header__stats-value--negative';

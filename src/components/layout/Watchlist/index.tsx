@@ -1,14 +1,6 @@
 import { X, ChevronLeft, Star } from 'lucide-react';
-import type { Symbol } from '../../../types';
+import type { WatchlistProps } from '../../../types/props';
 import './watchlist.scss';
-
-interface WatchlistProps {
-    symbols: Symbol[];
-    selectedSymbol: string;
-    onSelectSymbol: (symbol: Symbol) => void;
-    isCollapsed: boolean;
-    onToggleCollapse: () => void;
-}
 
 export function Watchlist({
     symbols,

@@ -21,3 +21,6 @@ export interface Timeframe {
     value: string;            // e.g., "1m", "5m", "1h"
     minutes: number;          // duration in minutes for calculations
 }
+
+export type DrawingTool = 'trendline' | 'horizontal' | 'vertical' | 'none';
+export type ChartStyle = 'candlestick' | 'line';
