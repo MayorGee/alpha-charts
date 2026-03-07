@@ -1,2 +1,21 @@
 @forward 'abstracts';
 @forward 'base';
+@use './abstracts' as *;
+
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: $color-bg-primary;
+}
+
+.app-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.chart-area {
+    flex: 1;
+    background: $color-bg-primary;
+}
