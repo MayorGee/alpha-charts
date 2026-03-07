@@ -1,0 +1,21 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+body {
+    font-family: $font-family-sans;
+    font-size: $font-size-md;
+    color: $color-text-primary;
+    background-color: $color-bg-primary;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: $font-weight-medium;
+    line-height: 1.2;
+}
+
+code, pre {
+    font-family: $font-family-mono;
+    font-size: $font-size-sm;
+}
