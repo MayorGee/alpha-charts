@@ -8,12 +8,19 @@ export interface Symbol {
 }
 
 export interface Candle {
-    timestamp: number;        // Unix timestamp in milliseconds
+    time: Date;      
     open: number;
     high: number;
     low: number;
     close: number;
     volume: number;
+}
+
+export interface Indicator {
+    id: string;
+    name: string;
+    description: string;
+    color: string;
 }
 
 export interface Timeframe {
@@ -24,3 +31,9 @@ export interface Timeframe {
 
 export type DrawingTool = 'trendline' | 'horizontal' | 'vertical' | 'none';
 export type ChartStyle = 'candlestick' | 'line';
+
+export interface TooltipData {
+    candle: Candle;
+    x: number;
+    y: number;
+}

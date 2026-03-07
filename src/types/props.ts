@@ -1,4 +1,4 @@
-import type { Candle, ChartStyle, DrawingTool, Symbol } from './index';
+import type { Candle, ChartStyle, DrawingTool, Indicator, Symbol } from './index';
 
 export interface HeaderProps {
     symbol: Symbol;
@@ -40,12 +40,18 @@ export interface CandlestickChartProps {
     data: Candle[];
     width: number;
     height: number;
-    showGrid?: boolean;
-    chartStyle?: 'candlestick' | 'line'; 
+    showGrid: boolean;
+    chartStyle: ChartStyle;
 }
 
 export interface VolumeChartProps {
     data: Candle[];
     width: number;
     height: number;
+}
+
+export interface IndicatorDialogProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onAddIndicator: (indicator: Indicator) => void;
 }

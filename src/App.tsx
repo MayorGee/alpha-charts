@@ -62,6 +62,11 @@ function App() {
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
     const [chartData, setChartData] = useState<Candle[]>([]);
 
+    useEffect(() => {
+      const data = generateMockCandles(100);
+      setChartData(data);
+    }, [selectedSymbol, selectedTimeframe]);
+
     const headerHeight = 64;
     const toolbarHeight = 48;
     const volumeChartHeight = 120;
@@ -74,20 +79,16 @@ function App() {
     const availableHeight = window.innerHeight - headerHeight - toolbarHeight - volumeChartHeight - timeframeSelectorHeight;
     const [mainChartHeight, setMainChartHeight] = useState(availableHeight);
 
-    // Update on window resize
     useEffect(() => {
         const handleResize = () => {
             const newAvailableHeight = window.innerHeight - headerHeight - toolbarHeight - volumeChartHeight - timeframeSelectorHeight;
             setMainChartHeight(newAvailableHeight);
         };
+
         window.addEventListener('resize', handleResize);
+        
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-
-    useEffect(() => {
-      const data = generateMockCandles(100);
-      setChartData(data);
-    }, [selectedSymbol, selectedTimeframe]);
 
     const handleSearch = (query: string) => {
         console.log('Searching:', query);

@@ -2,7 +2,7 @@ import type { Candle } from '../types';
 
 export function generateMockCandles(count: number, basePrice = 40000): Candle[] {
     const candles: Candle[] = [];
-    let timestamp = Date.now() - count * 60000; // start count minutes ago
+    let time = new Date(Date.now() - count * 60000); // start count minutes ago
     let lastClose = basePrice;
 
     for (let i = 0; i < count; i++) {
@@ -13,7 +13,7 @@ export function generateMockCandles(count: number, basePrice = 40000): Candle[] 
         const volume = Math.random() * 1000 + 500;
 
         candles.push({
-            timestamp,
+            time: new Date(time),
             open,
             high,
             low,
@@ -21,8 +21,8 @@ export function generateMockCandles(count: number, basePrice = 40000): Candle[] 
             volume,
         });
 
+        time = new Date(time.getTime() + 60000); // next minute
         lastClose = close;
-        timestamp += 60000; // next minute
     }
 
     return candles;
