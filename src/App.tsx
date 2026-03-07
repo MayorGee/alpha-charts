@@ -3,6 +3,7 @@ import { Header } from './components/layout/Header';
 import { Toolbar, type ChartStyle, type DrawingTool } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
 import { OrderPanel } from './components/layout/OrderPanel';
+import { TimeframeSelector } from './components/layout/TimeframeSelector';
 import type { Symbol } from './types';
 
 const mockSymbols: Symbol[] = [
@@ -53,6 +54,7 @@ function App() {
     const [chartStyle, setChartStyle] = useState<ChartStyle>('candlestick');
     const [showGrid, setShowGrid] = useState(true);
     const [selectedSymbol, setSelectedSymbol] = useState<Symbol>(mockSymbols[0]);
+    const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
 
@@ -108,6 +110,10 @@ function App() {
                     onToggleCollapse={() => setOrderPanelCollapsed(!orderPanelCollapsed)}
                 />
             </div>
+            <TimeframeSelector
+                selectedTimeframe={selectedTimeframe}
+                onSelectTimeframe={setSelectedTimeframe}
+            />
         </div>
     );
 }

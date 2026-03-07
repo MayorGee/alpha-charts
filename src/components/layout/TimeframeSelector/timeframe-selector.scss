@@ -1,0 +1,38 @@
+@use '../../../scss/abstracts' as *;
+
+.timeframe-selector {
+    height: 48px;
+    background: $color-bg-secondary;
+    border-top: 1px solid $color-border;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-xs;
+    padding: 0 $spacing-md;
+
+    &__button {
+        padding: $spacing-xs $spacing-md;
+        border-radius: $border-radius-sm;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        font-family: $font-family-sans;
+        transition: background-color 0.2s ease, color 0.2s ease;
+        cursor: pointer;
+        background: $color-bg-primary;
+        color: $color-text-secondary;
+
+        &:hover {
+            background: $color-bg-tertiary;
+            color: $color-text-primary;
+        }
+
+        &--active {
+            background: $color-accent;
+            color: $color-white;
+
+            &:hover {
+                background: $color-accent;
+            }
+        }
+    }
+}
