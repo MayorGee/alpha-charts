@@ -1,0 +1,20 @@
+@use '../../../scss/abstracts' as *;
+
+.volume-chart {
+    display: block;
+    width: 100%;
+    height: 100%;
+
+    .x-axis {
+        font-size: $font-size-xs;
+        font-family: $font-family-mono;
+
+        line, path {
+            stroke: $color-border;
+        }
+
+        text {
+            fill: $color-text-secondary;
+        }
+    }
+}

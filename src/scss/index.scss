@@ -17,5 +17,16 @@
 
 .chart-area {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     background: $color-bg-primary;
+    overflow: hidden;
+
+    > *:first-child {
+        flex: 1; 
+    }
+
+    > *:last-child {
+        height: 120px; 
+    }
 }

@@ -1,4 +1,4 @@
-import type { ChartStyle, DrawingTool, Symbol } from './index';
+import type { Candle, ChartStyle, DrawingTool, Symbol } from './index';
 
 export interface HeaderProps {
     symbol: Symbol;
@@ -34,4 +34,18 @@ export interface OrderPanelProps {
 export interface TimeframeSelectorProps {
     selectedTimeframe: string;
     onSelectTimeframe: (timeframe: string) => void;
+}
+
+export interface CandlestickChartProps {
+    data: Candle[];
+    width: number;
+    height: number;
+    showGrid?: boolean;
+    chartStyle?: 'candlestick' | 'line'; 
+}
+
+export interface VolumeChartProps {
+    data: Candle[];
+    width: number;
+    height: number;
 }

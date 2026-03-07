@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/layout/Header';
 import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
 import { OrderPanel } from './components/layout/OrderPanel';
 import { TimeframeSelector } from './components/layout/TimeframeSelector';
-import type { ChartStyle, DrawingTool, Symbol } from './types';
+import type { Candle, ChartStyle, DrawingTool, Symbol } from './types';
+import { CandlestickChart } from './components/chart/CandlestickChart';
+import { VolumeChart } from './components/chart/VolumeChart';
+import { generateMockCandles } from './utils/chartData';
 
 const mockSymbols: Symbol[] = [
     {
@@ -57,6 +60,34 @@ function App() {
     const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
+    const [chartData, setChartData] = useState<Candle[]>([]);
+
+    const headerHeight = 64;
+    const toolbarHeight = 48;
+    const volumeChartHeight = 120;
+    const timeframeSelectorHeight = 48; 
+
+    const watchlistWidth = watchlistCollapsed ? 48 : 224;
+    const orderPanelWidth = orderPanelCollapsed ? 48 : 256;
+    const chartWidth = window.innerWidth - watchlistWidth - orderPanelWidth;
+
+    const availableHeight = window.innerHeight - headerHeight - toolbarHeight - volumeChartHeight - timeframeSelectorHeight;
+    const [mainChartHeight, setMainChartHeight] = useState(availableHeight);
+
+    // Update on window resize
+    useEffect(() => {
+        const handleResize = () => {
+            const newAvailableHeight = window.innerHeight - headerHeight - toolbarHeight - volumeChartHeight - timeframeSelectorHeight;
+            setMainChartHeight(newAvailableHeight);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+      const data = generateMockCandles(100);
+      setChartData(data);
+    }, [selectedSymbol, selectedTimeframe]);
 
     const handleSearch = (query: string) => {
         console.log('Searching:', query);
@@ -102,7 +133,18 @@ function App() {
                 />
                 {/* Chart area placeholder */}
                 <div className="chart-area">
-                    {/* Chart will go here */}
+                    <CandlestickChart
+                        data={chartData}
+                        width={chartWidth} // need to compute chart width
+                        height={mainChartHeight}
+                        showGrid={showGrid}
+                        chartStyle={chartStyle}
+                    />
+                    <VolumeChart
+                        data={chartData}
+                        width={chartWidth}
+                        height={volumeChartHeight} // 120 from original
+                    />
                 </div>
                 <OrderPanel
                     currentPrice={selectedSymbol.price}
