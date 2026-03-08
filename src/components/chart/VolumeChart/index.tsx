@@ -32,7 +32,7 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data, width, height })
             .range([chartHeight, 0]);
 
         // Bar width
-        const barWidth = Math.min(chartWidth / data.length - 2, 8);
+        const barWidth = Math.max(1, Math.min(chartWidth / data.length - 2, 8));
 
         // Draw volume bars
         g.selectAll('.volume-bar')

@@ -1,4 +1,4 @@
-import type { Candle, ChartStyle, DrawingTool, Indicator, Symbol } from './index';
+import type { Candle, ChartStyle, DrawingTool, Indicator, IndicatorResult, Symbol } from './index';
 
 export interface HeaderProps {
     symbol: Symbol;
@@ -44,6 +44,7 @@ export interface CandlestickChartProps {
     height: number;
     showGrid: boolean;
     chartStyle: ChartStyle;
+    indicators?: IndicatorResult[];
 }
 
 export interface VolumeChartProps {

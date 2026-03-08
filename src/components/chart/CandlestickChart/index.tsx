@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { CandlestickChartProps } from '../../../types/props';
-import type { Candle, TooltipData } from '../../../types'; 
+import type { Candle, IndicatorResult, TooltipData } from '../../../types'; 
 import './candlestick-chart.scss';
 
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
@@ -10,6 +10,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     height,
     showGrid,
     chartStyle,
+    indicators
 }) => {
     const svgRef = useRef<SVGSVGElement>(null);
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
@@ -76,7 +77,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
         if (chartStyle === 'candlestick') {
             // Candlestick width
-            const candleWidth = Math.min(chartWidth / data.length - 2, 8);
+            const candleWidth = Math.max(1, Math.min(chartWidth / data.length - 2, 8));
 
             // Draw candlesticks
             const candles = g
@@ -135,6 +136,30 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 .attr('fill', '#42A5F5')
                 .attr('fill-opacity', 0.1)
                 .attr('d', area);
+        }
+
+        // Draw indicator overlays (main pane)
+        if (indicators && indicators.length > 0) {
+            indicators.forEach((ind: IndicatorResult) => {
+                if (ind.pane !== 'main') return;
+
+                // Create a line generator that works with nullable numbers
+                const line = d3.line<number | null>()
+                    .x((_, i) => {
+                        const candle = data[i];
+                        return candle ? xScale(candle.time) : 0;
+                    })
+                    .y(d => d !== null ? yScale(d) : 0)
+                    .defined(d => d !== null);
+
+                // Append the path
+                svg.append('path')
+                    .datum(ind.data)
+                    .attr('fill', 'none')
+                    .attr('stroke', ind.color)
+                    .attr('stroke-width', 2)
+                    .attr('d', line);
+            });
         }
 
         // Time axis
@@ -202,7 +227,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             setCrosshair(null);
             setTooltip(null);
         });
-    }, [data, width, height, showGrid, chartStyle]);
+    }, [data, width, height, showGrid, chartStyle, indicators]);
 
     return (
         <div className="candlestick-chart-container">

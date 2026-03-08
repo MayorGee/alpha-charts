@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/layout/Header';
 import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
@@ -8,7 +8,9 @@ import { CandlestickChart } from './components/chart/CandlestickChart';
 import { VolumeChart } from './components/chart/VolumeChart';
 import { IndicatorDialog } from './components/layout/IndicatorDialog';
 import { useBinanceData } from './hooks/useBinanceData';
-import type { ChartStyle, DrawingTool, Symbol, Indicator } from './types';
+import type { ChartStyle, DrawingTool, Symbol, Indicator, IndicatorResult } from './types';
+import { calculateSMA } from './lib/indicators/sma';
+
 
 // Mock symbols (for watchlist – 24h stats will remain static for now)
 const mockSymbols: Symbol[] = [
@@ -122,6 +124,24 @@ function App() {
         setSelectedSymbol(symbol);
     };
 
+    const indicatorResults = useMemo(() => {
+        if (!candles.length) return [];
+        return activeIndicators.map(ind => {
+            switch (ind.id) {
+                case 'sma':
+                    return {
+                        id: ind.id,
+                        data: calculateSMA(candles, 20),
+                        color: ind.color,
+                        pane: 'main' as const,
+                    };
+                // Add other indicators later
+                default:
+                    return null;
+            }
+        }).filter(Boolean) as IndicatorResult[];
+    }, [candles, activeIndicators]);
+
     return (
         <div className="app">
             <Header 
@@ -164,6 +184,7 @@ function App() {
                                 height={dimensions.mainChartHeight}
                                 showGrid={showGrid}
                                 chartStyle={chartStyle}
+                                indicators={indicatorResults}
                             />
                             <VolumeChart
                                 data={candles}

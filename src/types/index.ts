@@ -39,3 +39,10 @@ export interface TooltipData {
 }
 
 export type MessageHandler = (candle: Candle) => void;
+
+export interface IndicatorResult {
+    id: string; // indicator id from Indicator
+    data: (number | null)[];
+    color: string;
+    pane?: 'main' | 'separate'; // 'main' for overlays, 'separate' for new pane (RSI, MACD)
+}
