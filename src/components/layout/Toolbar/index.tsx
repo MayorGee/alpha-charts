@@ -22,6 +22,8 @@ export function Toolbar({
     onGridToggle,
     onAddIndicator,
     onClearDrawings,
+    activeIndicators = [],
+    onRemoveIndicator,
 }: ToolbarProps) {
     const toolButtons = [
         { id: 'trendline' as DrawingTool, icon: TrendingUp, label: 'Trendline' },
@@ -51,6 +53,29 @@ export function Toolbar({
                     <Eraser />
                 </button>
             </div>
+
+            {/* Active Indicators */}
+            {activeIndicators.length > 0 && (
+                <div className="toolbar__indicators">
+                    {activeIndicators.map((indicator) => (
+                        <div key={indicator.id} className="toolbar__indicator-chip">
+                            <div
+                                className="toolbar__indicator-color"
+                                style={{ backgroundColor: indicator.color }}
+                            />
+                            <span className="toolbar__indicator-name">{indicator.name}</span>
+                            {onRemoveIndicator && (
+                                <button
+                                    className="toolbar__indicator-remove"
+                                    onClick={() => onRemoveIndicator(indicator.id)}
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Right Side Tools */}
             <div className="toolbar__group">

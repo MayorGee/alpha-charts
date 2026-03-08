@@ -1,0 +1,107 @@
+@use '../../../scss/abstracts' as *;
+
+.indicator-dialog {
+    display: flex;
+    flex-direction: column;
+    background: $color-bg-secondary;
+    border-radius: $border-radius-md;
+    border: 1px solid $color-border;
+    width: 100%;
+    max-width: 350px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    max-height: 90vh;
+
+    &__overlay {
+        position: fixed;
+        inset: 0;
+        z-index: $z-index-modal;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    &__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: $spacing-md;
+        border-bottom: 1px solid $color-border;
+    }
+
+    &__title {
+        color: $color-text-primary;
+        font-weight: $font-weight-medium;
+        font-family: $font-family-sans;
+        font-size: $font-size-md;
+    }
+
+    &__close {
+        padding: $spacing-xs;
+        border-radius: $border-radius-sm;
+        color: $color-text-secondary;
+        transition: background-color 0.2s ease, color 0.2s ease;
+
+        &:hover {
+            background: $color-bg-tertiary;
+            color: $color-text-primary;
+        }
+
+        svg {
+            width: 20px;
+            height: 20px;
+        }
+    }
+
+    &__content {
+        padding: $spacing-md;
+        overflow-y: auto;
+        max-height: 384px;
+    }
+
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+    }
+
+    &__item {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        padding: $spacing-sm;
+        background: $color-bg-primary;
+        border-radius: $border-radius-sm;
+        transition: background-color 0.2s ease;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover {
+            background: $color-bg-tertiary;
+        }
+
+        &-color {
+            width: 12px;
+            height: 12px;
+            border-radius: $border-radius-circle;
+            flex-shrink: 0;
+        }
+
+        &-info {
+            flex: 1;
+        }
+
+        &-name {
+            color: $color-text-primary;
+            font-size: $font-size-sm;
+            font-weight: $font-weight-medium;
+            font-family: $font-family-sans;
+        }
+
+        &-description {
+            color: $color-text-secondary;
+            font-size: $font-size-xs;
+            font-family: $font-family-sans;
+        }
+    }
+}

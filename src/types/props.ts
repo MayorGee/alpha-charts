@@ -15,6 +15,8 @@ export interface ToolbarProps {
     onGridToggle: () => void;
     onAddIndicator: () => void;
     onClearDrawings: () => void;
+    activeIndicators?: Indicator[];           
+    onRemoveIndicator?: (id: string) => void; 
 }
 
 export interface WatchlistProps {

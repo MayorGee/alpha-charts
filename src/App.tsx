@@ -4,9 +4,10 @@ import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
 import { OrderPanel } from './components/layout/OrderPanel';
 import { TimeframeSelector } from './components/layout/TimeframeSelector';
-import type { Candle, ChartStyle, DrawingTool, Symbol } from './types';
+import type { Candle, ChartStyle, DrawingTool, Symbol, Indicator } from './types';
 import { CandlestickChart } from './components/chart/CandlestickChart';
 import { VolumeChart } from './components/chart/VolumeChart';
+import { IndicatorDialog } from './components/layout/IndicatorDialog';
 import { generateMockCandles } from './utils/chartData';
 
 const mockSymbols: Symbol[] = [
@@ -61,10 +62,12 @@ function App() {
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
     const [chartData, setChartData] = useState<Candle[]>([]);
+    const [indicatorDialogOpen, setIndicatorDialogOpen] = useState(false);
+    const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
 
     useEffect(() => {
-      const data = generateMockCandles(100);
-      setChartData(data);
+        const data = generateMockCandles(100);
+        setChartData(data);
     }, [selectedSymbol, selectedTimeframe]);
 
     const headerHeight = 64;
@@ -94,12 +97,20 @@ function App() {
         console.log('Searching:', query);
     };
 
-    const handleAddIndicator = () => {
-      console.log('Indicator added');
+    const handleAddIndicator = (indicator: Indicator) => {
+        if (!activeIndicators.some(i => i.id === indicator.id)) {
+          setActiveIndicators([...activeIndicators, indicator]);
+        } else {
+          alert('Indicator Already added!')
+        }
+    };
+
+    const handleRemoveIndicator = (id: string) => {
+        setActiveIndicators(activeIndicators.filter(i => i.id !== id));
     };
 
     const handleClearDrawings = () => {
-      console.log('Clear drawings');
+        console.log('Clear drawings');
     };
 
     const handleSelectSymbol = (symbol: Symbol) => {
@@ -121,8 +132,10 @@ function App() {
                 onChartStyleChange={setChartStyle}
                 showGrid={showGrid}
                 onGridToggle={() => setShowGrid(!showGrid)}
-                onAddIndicator={handleAddIndicator}
+                onAddIndicator={() => setIndicatorDialogOpen(true)}
                 onClearDrawings={handleClearDrawings}
+                activeIndicators={activeIndicators}
+                onRemoveIndicator={handleRemoveIndicator}
             />
             <div className="app-main">
                 <Watchlist
@@ -136,7 +149,7 @@ function App() {
                 <div className="chart-area">
                     <CandlestickChart
                         data={chartData}
-                        width={chartWidth} // need to compute chart width
+                        width={chartWidth} 
                         height={mainChartHeight}
                         showGrid={showGrid}
                         chartStyle={chartStyle}
@@ -144,7 +157,7 @@ function App() {
                     <VolumeChart
                         data={chartData}
                         width={chartWidth}
-                        height={volumeChartHeight} // 120 from original
+                        height={volumeChartHeight}
                     />
                 </div>
                 <OrderPanel
@@ -156,6 +169,11 @@ function App() {
             <TimeframeSelector
                 selectedTimeframe={selectedTimeframe}
                 onSelectTimeframe={setSelectedTimeframe}
+            />
+            <IndicatorDialog
+                isOpen={indicatorDialogOpen}
+                onClose={() => setIndicatorDialogOpen(false)}
+                onAddIndicator={handleAddIndicator}
             />
         </div>
     );
