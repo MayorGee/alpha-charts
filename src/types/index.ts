@@ -37,3 +37,5 @@ export interface TooltipData {
     x: number;
     y: number;
 }
+
+export type MessageHandler = (candle: Candle) => void;

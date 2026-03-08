@@ -52,17 +52,18 @@ export function Watchlist({
                         >
                             <div className="watchlist__item-row">
                                 <span className="watchlist__item-symbol">{symbol.symbol}</span>
-                                <button
+                                <span
                                     className="watchlist__item-remove"
+                                    title="Remove from watchlist"
+                                    role='button'
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         // Handle remove from watchlist later
                                         console.log('Remove', symbol.symbol);
                                     }}
-                                    title="Remove from watchlist"
                                 >
                                     <X />
-                                </button>
+                                </span>
                             </div>
                             <div className="watchlist__item-row">
                                 <span className="watchlist__item-price">

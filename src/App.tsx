@@ -4,54 +4,61 @@ import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
 import { OrderPanel } from './components/layout/OrderPanel';
 import { TimeframeSelector } from './components/layout/TimeframeSelector';
-import type { Candle, ChartStyle, DrawingTool, Symbol, Indicator } from './types';
 import { CandlestickChart } from './components/chart/CandlestickChart';
 import { VolumeChart } from './components/chart/VolumeChart';
 import { IndicatorDialog } from './components/layout/IndicatorDialog';
-import { generateMockCandles } from './utils/chartData';
+import { useBinanceData } from './hooks/useBinanceData';
+import type { ChartStyle, DrawingTool, Symbol, Indicator } from './types';
 
+// Mock symbols (for watchlist – 24h stats will remain static for now)
 const mockSymbols: Symbol[] = [
     {
-      symbol: 'BTC/USDT',
-      price: 67799.74,
-      change24h: -0.94,
-      high24h: 70213.46,
-      low24h: 67441.00,
-      volume24h: 679020000 // USDT
+        symbol: 'BTC/USDT',
+        price: 67799.74,
+        change24h: -0.94,
+        high24h: 70213.46,
+        low24h: 67441.00,
+        volume24h: 679020000
     },
     {
-      symbol: 'ETH/USDT',
-      price: 1981.70,
-      change24h: -3.07,
-      high24h: 2044.89,
-      low24h: 1955.95,
-      volume24h: 679750000 // USDT
+        symbol: 'ETH/USDT',
+        price: 1981.70,
+        change24h: -3.07,
+        high24h: 2044.89,
+        low24h: 1955.95,
+        volume24h: 679750000
     },
     {
-      symbol: 'SOL/USDT',
-      price: 84.18,
-      change24h: -4.09,
-      high24h: 90.83,
-      low24h: 84.17,
-      volume24h: 420880000 // approx USDT
+        symbol: 'SOL/USDT',
+        price: 84.18,
+        change24h: -4.09,
+        high24h: 90.83,
+        low24h: 84.17,
+        volume24h: 420880000
     },
     {
-      symbol: 'BNB/USDT',
-      price: 398.25,
-      change24h: -1.52,
-      high24h: 407.80,
-      low24h: 392.10,
-      volume24h: 520000000
+        symbol: 'BNB/USDT',
+        price: 398.25,
+        change24h: -1.52,
+        high24h: 407.80,
+        low24h: 392.10,
+        volume24h: 520000000
     },
     {
-      symbol: 'XRP/USDT',
-      price: 0.586,
-      change24h: -2.13,
-      high24h: 0.603,
-      low24h: 0.574,
-      volume24h: 900000000
+        symbol: 'XRP/USDT',
+        price: 0.586,
+        change24h: -2.13,
+        high24h: 0.603,
+        low24h: 0.574,
+        volume24h: 900000000
     }
 ];
+
+// Layout constants
+const HEADER_HEIGHT = 64;
+const TOOLBAR_HEIGHT = 48;
+const VOLUME_CHART_HEIGHT = 120;
+const TIMEFRAME_SELECTOR_HEIGHT = 48;
 
 function App() {
     const [activeTool, setActiveTool] = useState<DrawingTool>('none');
@@ -61,47 +68,45 @@ function App() {
     const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
-    const [chartData, setChartData] = useState<Candle[]>([]);
     const [indicatorDialogOpen, setIndicatorDialogOpen] = useState(false);
     const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
+    const [dimensions, setDimensions] = useState({ chartWidth: 0, mainChartHeight: 0 });
 
+    // Real data from Binance
+    const { candles, loading, error, isLive } = useBinanceData(
+        selectedSymbol.symbol,
+        selectedTimeframe
+    );
+
+    // Update dimensions when panels collapse or window resizes
     useEffect(() => {
-        const data = generateMockCandles(100);
-        setChartData(data);
-    }, [selectedSymbol, selectedTimeframe]);
+        const updateDimensions = () => {
+            const watchlistWidth = watchlistCollapsed ? 48 : 224;
+            const orderPanelWidth = orderPanelCollapsed ? 48 : 256;
 
-    const headerHeight = 64;
-    const toolbarHeight = 48;
-    const volumeChartHeight = 120;
-    const timeframeSelectorHeight = 48; 
+            const chartWidth = Math.max(0, window.innerWidth - watchlistWidth - orderPanelWidth);
+            const mainChartHeight = Math.max(0,
+                window.innerHeight - HEADER_HEIGHT - TOOLBAR_HEIGHT - VOLUME_CHART_HEIGHT - TIMEFRAME_SELECTOR_HEIGHT
+            );
 
-    const watchlistWidth = watchlistCollapsed ? 48 : 224;
-    const orderPanelWidth = orderPanelCollapsed ? 48 : 256;
-    const chartWidth = window.innerWidth - watchlistWidth - orderPanelWidth;
-
-    const availableHeight = window.innerHeight - headerHeight - toolbarHeight - volumeChartHeight - timeframeSelectorHeight;
-    const [mainChartHeight, setMainChartHeight] = useState(availableHeight);
-
-    useEffect(() => {
-        const handleResize = () => {
-            const newAvailableHeight = window.innerHeight - headerHeight - toolbarHeight - volumeChartHeight - timeframeSelectorHeight;
-            setMainChartHeight(newAvailableHeight);
+            setDimensions({ chartWidth, mainChartHeight });
         };
 
-        window.addEventListener('resize', handleResize);
-        
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+        updateDimensions();
+        window.addEventListener('resize', updateDimensions);
+        return () => window.removeEventListener('resize', updateDimensions);
+    }, [watchlistCollapsed, orderPanelCollapsed]);
 
+    // Handlers
     const handleSearch = (query: string) => {
         console.log('Searching:', query);
     };
 
     const handleAddIndicator = (indicator: Indicator) => {
         if (!activeIndicators.some(i => i.id === indicator.id)) {
-          setActiveIndicators([...activeIndicators, indicator]);
+            setActiveIndicators([...activeIndicators, indicator]);
         } else {
-          alert('Indicator Already added!')
+            alert('Indicator already added!');
         }
     };
 
@@ -115,15 +120,14 @@ function App() {
 
     const handleSelectSymbol = (symbol: Symbol) => {
         setSelectedSymbol(symbol);
-        console.log('Selcted symbol: ', symbol.symbol)
-    }
+    };
 
     return (
         <div className="app">
             <Header 
                 symbol={selectedSymbol}
                 onSymbolSearch={handleSearch}
-                isConnected={true}
+                isConnected={isLive}
             />
             <Toolbar
                 activeTool={activeTool}
@@ -145,20 +149,29 @@ function App() {
                     isCollapsed={watchlistCollapsed}
                     onToggleCollapse={() => setWatchlistCollapsed(!watchlistCollapsed)}
                 />
-                {/* Chart area placeholder */}
                 <div className="chart-area">
-                    <CandlestickChart
-                        data={chartData}
-                        width={chartWidth} 
-                        height={mainChartHeight}
-                        showGrid={showGrid}
-                        chartStyle={chartStyle}
-                    />
-                    <VolumeChart
-                        data={chartData}
-                        width={chartWidth}
-                        height={volumeChartHeight}
-                    />
+                    {loading && (
+                        <div className="chart-loading">Loading market data...</div>
+                    )}
+                    {error && (
+                        <div className="chart-error">Error: {error}</div>
+                    )}
+                    {!loading && !error && dimensions.chartWidth > 0 && dimensions.mainChartHeight > 0 && (
+                        <>
+                            <CandlestickChart
+                                data={candles}
+                                width={dimensions.chartWidth}
+                                height={dimensions.mainChartHeight}
+                                showGrid={showGrid}
+                                chartStyle={chartStyle}
+                            />
+                            <VolumeChart
+                                data={candles}
+                                width={dimensions.chartWidth}
+                                height={VOLUME_CHART_HEIGHT}
+                            />
+                        </>
+                    )}
                 </div>
                 <OrderPanel
                     currentPrice={selectedSymbol.price}

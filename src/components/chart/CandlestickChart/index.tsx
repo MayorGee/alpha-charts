@@ -16,7 +16,9 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(null);
 
     useEffect(() => {
-        if (!svgRef.current || data.length === 0) return;
+         if (!svgRef.current || data.length === 0 || width <= 0 || height <= 0 || isNaN(width) || isNaN(height)) {
+            return;
+        }
 
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();

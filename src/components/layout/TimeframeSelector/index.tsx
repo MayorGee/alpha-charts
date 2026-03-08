@@ -7,8 +7,8 @@ const timeframes = [
     { label: '15m', value: '15m', minutes: 15 },
     { label: '1h', value: '1h', minutes: 60 },
     { label: '4h', value: '4h', minutes: 240 },
-    { label: '1D', value: '1d', minutes: 1440 },
-    { label: '1W', value: '1w', minutes: 10080 },
+    { label: '1D', value: '1D', minutes: 1440 },
+    { label: '1W', value: '1W', minutes: 10080 },
 ];
 
 export function TimeframeSelector({
