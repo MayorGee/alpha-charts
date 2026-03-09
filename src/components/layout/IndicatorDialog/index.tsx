@@ -32,7 +32,7 @@ const availableIndicators: Indicator[] = [
         id: 'bollinger',
         name: 'Bollinger Bands',
         description: 'Period: 20, Std Dev: 2',
-        color: '#FF7043',
+        color: '#2962FF',
     },
 ];
 

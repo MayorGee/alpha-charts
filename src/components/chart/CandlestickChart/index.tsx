@@ -153,12 +153,43 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     .defined(d => d !== null);
 
                 // Append the path
-                svg.append('path')
-                    .datum(ind.data)
-                    .attr('fill', 'none')
-                    .attr('stroke', ind.color)
-                    .attr('stroke-width', 2)
-                    .attr('d', line);
+                if (ind.id.startsWith('bollinger')) {
+                    const bands = ind.data as any; // temporary, we'll improve typing
+                    
+                    if (bands.upper && bands.middle && bands.lower) {
+                        // Draw upper band
+                        svg.append('path')
+                            .datum(bands.upper)
+                            .attr('fill', 'none')
+                            .attr('stroke', ind.color)
+                            .attr('stroke-width', 1.5)
+                            .attr('opacity', 0.7)
+                            .attr('d', line);
+                        // Draw middle band
+                        svg.append('path')
+                            .datum(bands.middle)
+                            .attr('fill', 'none')
+                            .attr('stroke', ind.color)
+                            .attr('stroke-width', 2)
+                            .attr('d', line);
+                        // Draw lower band
+                        svg.append('path')
+                            .datum(bands.lower)
+                            .attr('fill', 'none')
+                            .attr('stroke', ind.color)
+                            .attr('stroke-width', 1.5)
+                            .attr('opacity', 0.7)
+                            .attr('d', line);
+                    }
+                } else {
+                    // Normal overlay (single line)
+                    svg.append('path')
+                        .datum(ind.data as (number | null)[])
+                        .attr('fill', 'none')
+                        .attr('stroke', ind.color)
+                        .attr('stroke-width', 2)
+                        .attr('d', line);
+                }
             });
         }
 

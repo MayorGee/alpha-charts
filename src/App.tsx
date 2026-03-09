@@ -10,15 +10,17 @@ import { IndicatorDialog } from './components/layout/IndicatorDialog';
 // Chart components
 import { CandlestickChart } from './components/chart/CandlestickChart';
 import { VolumeChart } from './components/chart/VolumeChart';
+import { IndicatorPane } from './components/chart/IndicatorPane';
 
-// Hooks
+// Indicator Calculators
 import { calculateSMA } from './lib/indicators/sma';
 import { calculateEMA } from './lib/indicators/ema';
+import { calculateRSI } from './lib/indicators/rsi';
 
 // Others
 import { useBinanceData } from './hooks/useBinanceData';
 import type { ChartStyle, DrawingTool, Symbol, Indicator, IndicatorResult } from './types';
-
+import { calculateBollingerBands } from './lib/indicators/bollinger';
 
 // Mock symbols (for watchlist – 24h stats will remain static for now)
 const mockSymbols: Symbol[] = [
@@ -69,6 +71,7 @@ const HEADER_HEIGHT = 64;
 const TOOLBAR_HEIGHT = 48;
 const VOLUME_CHART_HEIGHT = 120;
 const TIMEFRAME_SELECTOR_HEIGHT = 48;
+const INDICATOR_PANE_HEIGHT = 120;
 
 function App() {
     const [activeTool, setActiveTool] = useState<DrawingTool>('none');
@@ -82,11 +85,58 @@ function App() {
     const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
     const [dimensions, setDimensions] = useState({ chartWidth: 0, mainChartHeight: 0 });
 
-    // Real data from Binance
     const { candles, loading, error, isLive } = useBinanceData(
         selectedSymbol.symbol,
         selectedTimeframe
     );
+
+    const indicatorResults = useMemo(() => {
+        if (!candles.length) return [];
+        return activeIndicators.map(ind => {
+            switch (ind.id) {
+                case 'sma':
+                    return {
+                        id: ind.id,
+                        data: calculateSMA(candles, 20),
+                        color: ind.color,
+                        pane: 'main' as const,
+                    };
+                case 'ema': 
+                    return {
+                        id: ind.id,
+                        data: calculateEMA(candles, 12),
+                        color: ind.color,
+                        pane: 'main' as const,
+                    };
+                case 'rsi':
+                    return {
+                        id: ind.id,
+                        data: calculateRSI(candles, 14),
+                        color: ind.color,
+                        pane: 'separate' as const,
+                    };
+                case 'bollinger':
+                    const bands = calculateBollingerBands(candles, 20, 2);
+
+                    return {
+                        id: ind.id,
+                        data: bands, // { upper, middle, lower }
+                        color: ind.color,
+                        pane: 'main',
+                    };
+                default:
+                    return null;
+            }
+        }).filter(Boolean) as IndicatorResult[];
+    }, [candles, activeIndicators]);
+
+    const mainIndicators = useMemo(() => {
+        return indicatorResults.filter(ind => ind.pane === 'main');
+    }, [indicatorResults]);
+    
+    const separateIndicators = useMemo(() => {
+        return indicatorResults.filter(ind => ind.pane === 'separate');
+    }, [indicatorResults]);
 
     // Update dimensions when panels collapse or window resizes
     useEffect(() => {
@@ -95,8 +145,15 @@ function App() {
             const orderPanelWidth = orderPanelCollapsed ? 48 : 256;
 
             const chartWidth = Math.max(0, window.innerWidth - watchlistWidth - orderPanelWidth);
-            const mainChartHeight = Math.max(0,
-                window.innerHeight - HEADER_HEIGHT - TOOLBAR_HEIGHT - VOLUME_CHART_HEIGHT - TIMEFRAME_SELECTOR_HEIGHT
+            const totalIndicatorHeight = separateIndicators.length * INDICATOR_PANE_HEIGHT;
+            const mainChartHeight = Math.max(
+                200, // minimum height
+                window.innerHeight
+                    - HEADER_HEIGHT
+                    - TOOLBAR_HEIGHT
+                    - VOLUME_CHART_HEIGHT
+                    - TIMEFRAME_SELECTOR_HEIGHT
+                    - totalIndicatorHeight
             );
 
             setDimensions({ chartWidth, mainChartHeight });
@@ -131,30 +188,6 @@ function App() {
     const handleSelectSymbol = (symbol: Symbol) => {
         setSelectedSymbol(symbol);
     };
-
-    const indicatorResults = useMemo(() => {
-        if (!candles.length) return [];
-        return activeIndicators.map(ind => {
-            switch (ind.id) {
-                case 'sma':
-                    return {
-                        id: ind.id,
-                        data: calculateSMA(candles, 20),
-                        color: ind.color,
-                        pane: 'main' as const,
-                    };
-                case 'ema': 
-                    return {
-                        id: ind.id,
-                        data: calculateEMA(candles, 12),
-                        color: ind.color,
-                        pane: 'main' as const,
-                    }
-                default:
-                    return null;
-            }
-        }).filter(Boolean) as IndicatorResult[];
-    }, [candles, activeIndicators]);
 
     return (
         <div className="app">
@@ -205,6 +238,17 @@ function App() {
                                 width={dimensions.chartWidth}
                                 height={VOLUME_CHART_HEIGHT}
                             />
+                            {separateIndicators.map((ind) => (
+                                <IndicatorPane
+                                    key={ind.id}
+                                    data={candles}
+                                    indicatorData={ind.data as (number | null)[]}
+                                    color={ind.color}
+                                    label={ind.id.toUpperCase()}
+                                    width={dimensions.chartWidth}
+                                    height={INDICATOR_PANE_HEIGHT} 
+                                />
+                            ))}
                         </>
                     )}
                 </div>
