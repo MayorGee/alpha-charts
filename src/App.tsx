@@ -1,15 +1,23 @@
 import { useState, useEffect, useMemo } from 'react';
+// Layout Components
 import { Header } from './components/layout/Header';
 import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
 import { OrderPanel } from './components/layout/OrderPanel';
 import { TimeframeSelector } from './components/layout/TimeframeSelector';
+import { IndicatorDialog } from './components/layout/IndicatorDialog';
+
+// Chart components
 import { CandlestickChart } from './components/chart/CandlestickChart';
 import { VolumeChart } from './components/chart/VolumeChart';
-import { IndicatorDialog } from './components/layout/IndicatorDialog';
+
+// Hooks
+import { calculateSMA } from './lib/indicators/sma';
+import { calculateEMA } from './lib/indicators/ema';
+
+// Others
 import { useBinanceData } from './hooks/useBinanceData';
 import type { ChartStyle, DrawingTool, Symbol, Indicator, IndicatorResult } from './types';
-import { calculateSMA } from './lib/indicators/sma';
 
 
 // Mock symbols (for watchlist – 24h stats will remain static for now)
@@ -135,7 +143,13 @@ function App() {
                         color: ind.color,
                         pane: 'main' as const,
                     };
-                // Add other indicators later
+                case 'ema': 
+                    return {
+                        id: ind.id,
+                        data: calculateEMA(candles, 12),
+                        color: ind.color,
+                        pane: 'main' as const,
+                    }
                 default:
                     return null;
             }
