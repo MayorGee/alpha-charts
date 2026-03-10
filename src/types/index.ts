@@ -1,3 +1,5 @@
+import type { MACDResult } from "../lib/indicators/macd";
+
 export interface Symbol {
     symbol: string;           // e.g., "BTC/USDT"
     price: number;
@@ -40,9 +42,14 @@ export interface TooltipData {
 
 export type MessageHandler = (candle: Candle) => void;
 
+export type IndicatorData = 
+    | (number | null)[] 
+    | { upper: (number | null)[]; middle: (number | null)[]; lower: (number | null)[] }
+    | MACDResult;
+
 export interface IndicatorResult {
-    id: string; // indicator id from Indicator
-    data: (number | null)[];
+    id: string;
+    data: IndicatorData;
     color: string;
-    pane?: 'main' | 'separate'; // 'main' for overlays, 'separate' for new pane (RSI, MACD)
+    pane: 'main' | 'separate';
 }

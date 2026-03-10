@@ -11,16 +11,18 @@ import { IndicatorDialog } from './components/layout/IndicatorDialog';
 import { CandlestickChart } from './components/chart/CandlestickChart';
 import { VolumeChart } from './components/chart/VolumeChart';
 import { IndicatorPane } from './components/chart/IndicatorPane';
+import { MACDPane } from './components/chart/MACDPane';
 
 // Indicator Calculators
 import { calculateSMA } from './lib/indicators/sma';
 import { calculateEMA } from './lib/indicators/ema';
 import { calculateRSI } from './lib/indicators/rsi';
+import { calculateBollingerBands } from './lib/indicators/bollinger';
+import { calculateMACD, type MACDResult } from './lib/indicators/macd';
 
 // Others
 import { useBinanceData } from './hooks/useBinanceData';
 import type { ChartStyle, DrawingTool, Symbol, Indicator, IndicatorResult } from './types';
-import { calculateBollingerBands } from './lib/indicators/bollinger';
 
 // Mock symbols (for watchlist – 24h stats will remain static for now)
 const mockSymbols: Symbol[] = [
@@ -124,15 +126,18 @@ function App() {
                         color: ind.color,
                         pane: 'main',
                     };
+                case 'macd':
+                    return {
+                        id: ind.id,
+                        data: calculateMACD(candles, 12, 26, 9), 
+                        color: ind.color,
+                        pane: 'separate',
+                    }
                 default:
                     return null;
             }
         }).filter(Boolean) as IndicatorResult[];
     }, [candles, activeIndicators]);
-
-    const mainIndicators = useMemo(() => {
-        return indicatorResults.filter(ind => ind.pane === 'main');
-    }, [indicatorResults]);
     
     const separateIndicators = useMemo(() => {
         return indicatorResults.filter(ind => ind.pane === 'separate');
@@ -162,7 +167,7 @@ function App() {
         updateDimensions();
         window.addEventListener('resize', updateDimensions);
         return () => window.removeEventListener('resize', updateDimensions);
-    }, [watchlistCollapsed, orderPanelCollapsed]);
+    }, [watchlistCollapsed, orderPanelCollapsed, separateIndicators.length]);
 
     // Handlers
     const handleSearch = (query: string) => {
@@ -238,17 +243,37 @@ function App() {
                                 width={dimensions.chartWidth}
                                 height={VOLUME_CHART_HEIGHT}
                             />
-                            {separateIndicators.map((ind) => (
-                                <IndicatorPane
-                                    key={ind.id}
-                                    data={candles}
-                                    indicatorData={ind.data as (number | null)[]}
-                                    color={ind.color}
-                                    label={ind.id.toUpperCase()}
-                                    width={dimensions.chartWidth}
-                                    height={INDICATOR_PANE_HEIGHT} 
-                                />
-                            ))}
+                            {separateIndicators.map((ind) => {
+                                if (ind.id === 'macd') {
+                                    const macdData = ind.data as MACDResult;
+
+                                    return (
+                                        <MACDPane
+                                            key={ind.id}
+                                            data={candles}
+                                            macd={macdData}
+                                            width={dimensions.chartWidth}
+                                            height={INDICATOR_PANE_HEIGHT}
+                                            lineColor={ind.color}
+                                            signalColor="#FDD835" // you can define a constant
+                                            histogramPositiveColor="#26A69A"
+                                            histogramNegativeColor="#EF5350"
+                                        />
+                                    );
+                                } else {
+                                    return (
+                                        <IndicatorPane
+                                            key={ind.id}
+                                            data={candles}
+                                            indicatorData={ind.data as (number | null)[]}
+                                            color={ind.color}
+                                            label={ind.id.toUpperCase()}
+                                            width={dimensions.chartWidth}
+                                            height={INDICATOR_PANE_HEIGHT} 
+                                        />
+                                    )
+                                }
+                            })}
                         </>
                     )}
                 </div>

@@ -1,3 +1,4 @@
+import type { MACDResult } from '../lib/indicators/macd';
 import type { Candle, ChartStyle, DrawingTool, Indicator, IndicatorResult, Symbol } from './index';
 
 export interface HeaderProps {
@@ -57,4 +58,15 @@ export interface IndicatorDialogProps {
     isOpen: boolean;
     onClose: () => void;
     onAddIndicator: (indicator: Indicator) => void;
+}
+
+export interface MACDPaneProps {
+    data: Candle[];
+    macd: MACDResult;
+    width: number;
+    height: number;
+    lineColor?: string;   // for MACD line
+    signalColor?: string; // for signal line
+    histogramPositiveColor?: string;
+    histogramNegativeColor?: string;
 }
