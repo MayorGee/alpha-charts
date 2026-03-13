@@ -1,4 +1,5 @@
 import type { MACDResult } from '../lib/indicators/macd';
+import type { Drawing } from './drawing';
 import type { Candle, ChartStyle, DrawingTool, Indicator, IndicatorResult, Symbol } from './index';
 
 export interface HeaderProps {
@@ -46,6 +47,9 @@ export interface CandlestickChartProps {
     showGrid: boolean;
     chartStyle: ChartStyle;
     indicators?: IndicatorResult[];
+    drawings?: Drawing[];
+    onAddDrawing?: (drawing: Omit<Drawing, 'id' | 'createdAt'>) => void;
+    activeTool?: string;
 }
 
 export interface VolumeChartProps {

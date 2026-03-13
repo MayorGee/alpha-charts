@@ -22,7 +22,9 @@ import { calculateMACD, type MACDResult } from './lib/indicators/macd';
 
 // Others
 import { useBinanceData } from './hooks/useBinanceData';
+import { useDrawing } from './contexts/DrawingContext';
 import type { ChartStyle, DrawingTool, Symbol, Indicator, IndicatorResult } from './types';
+
 
 // Mock symbols (for watchlist – 24h stats will remain static for now)
 const mockSymbols: Symbol[] = [
@@ -76,7 +78,6 @@ const TIMEFRAME_SELECTOR_HEIGHT = 48;
 const INDICATOR_PANE_HEIGHT = 120;
 
 function App() {
-    const [activeTool, setActiveTool] = useState<DrawingTool>('none');
     const [chartStyle, setChartStyle] = useState<ChartStyle>('candlestick');
     const [showGrid, setShowGrid] = useState(true);
     const [selectedSymbol, setSelectedSymbol] = useState<Symbol>(mockSymbols[0]);
@@ -186,13 +187,17 @@ function App() {
         setActiveIndicators(activeIndicators.filter(i => i.id !== id));
     };
 
-    const handleClearDrawings = () => {
-        console.log('Clear drawings');
-    };
-
     const handleSelectSymbol = (symbol: Symbol) => {
         setSelectedSymbol(symbol);
     };
+
+    const { 
+        activeTool, 
+        setActiveTool, 
+        drawings, 
+        addDrawing, 
+        clearDrawings 
+    } = useDrawing();
 
     return (
         <div className="app">
@@ -202,14 +207,14 @@ function App() {
                 isConnected={isLive}
             />
             <Toolbar
-                activeTool={activeTool}
+                activeTool={activeTool as DrawingTool}
                 onToolChange={setActiveTool}
                 chartStyle={chartStyle}
                 onChartStyleChange={setChartStyle}
                 showGrid={showGrid}
                 onGridToggle={() => setShowGrid(!showGrid)}
                 onAddIndicator={() => setIndicatorDialogOpen(true)}
-                onClearDrawings={handleClearDrawings}
+                onClearDrawings={clearDrawings}
                 activeIndicators={activeIndicators}
                 onRemoveIndicator={handleRemoveIndicator}
             />
@@ -237,6 +242,9 @@ function App() {
                                 showGrid={showGrid}
                                 chartStyle={chartStyle}
                                 indicators={indicatorResults}
+                                drawings={drawings}
+                                onAddDrawing={addDrawing}
+                                activeTool={activeTool}
                             />
                             <VolumeChart
                                 data={candles}

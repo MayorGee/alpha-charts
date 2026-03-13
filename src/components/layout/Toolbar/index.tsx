@@ -39,7 +39,7 @@ export function Toolbar({
                     <button
                         key={tool.id}
                         className={`toolbar__button ${activeTool === tool.id ? 'toolbar__button--active' : ''}`}
-                        onClick={() => onToolChange(tool.id)}
+                        onClick={() => onToolChange(activeTool === tool.id ? 'none' : tool.id)}
                         title={tool.label}
                     >
                         <tool.icon />

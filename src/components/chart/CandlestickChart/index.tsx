@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { CandlestickChartProps } from '../../../types/props';
 import type { Candle, IndicatorResult, TooltipData } from '../../../types'; 
+import type { Drawing, Point } from '../../../types/drawing';
 import './candlestick-chart.scss';
 
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
@@ -10,12 +11,18 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     height,
     showGrid,
     chartStyle,
-    indicators
+    indicators,
+    drawings,
+    onAddDrawing,
+    activeTool
 }) => {
     const svgRef = useRef<SVGSVGElement>(null);
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
     const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(null);
 
+    const [drawingStart, setDrawingStart] = useState<Point | null>(null);
+    const [drawingPreviewEnd, setDrawingPreviewEnd] = useState<Point | null>(null);
+    
     useEffect(() => {
          if (!svgRef.current || data.length === 0 || width <= 0 || height <= 0 || isNaN(width) || isNaN(height)) {
             return;
@@ -158,7 +165,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     
                     if (bands.upper && bands.middle && bands.lower) {
                         // Draw upper band
-                        svg.append('path')
+                        g.append('path')
                             .datum(bands.upper)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
@@ -166,14 +173,14 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                             .attr('opacity', 0.7)
                             .attr('d', line);
                         // Draw middle band
-                        svg.append('path')
+                        g.append('path')
                             .datum(bands.middle)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
                             .attr('stroke-width', 2)
                             .attr('d', line);
                         // Draw lower band
-                        svg.append('path')
+                        g.append('path')
                             .datum(bands.lower)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
@@ -183,7 +190,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     }
                 } else {
                     // Normal overlay (single line)
-                    svg.append('path')
+                    g.append('path')
                         .datum(ind.data as (number | null)[])
                         .attr('fill', 'none')
                         .attr('stroke', ind.color)
@@ -226,6 +233,37 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     .attr('font-family', 'JetBrains Mono')
             );
 
+        // After drawing candles and indicators, draw existing drawings
+        if (drawings && drawings.length > 0) {
+            drawings.forEach(drawing => {
+                if (drawing.type === 'trendline' && drawing.points.length === 2) {
+                    const [p1, p2] = drawing.points;
+                    g.append('line')
+                        .attr('x1', xScale(new Date(p1.x)))
+                        .attr('y1', yScale(p1.y))
+                        .attr('x2', xScale(new Date(p2.x)))
+                        .attr('y2', yScale(p2.y))
+                        .attr('stroke', drawing.color || '#FDD835')
+                        .attr('stroke-width', 2)
+                        .attr('stroke-dasharray', 'none');
+                }
+            });
+        }
+
+        // Draw pending preview
+        if (drawingStart && drawingPreviewEnd) {
+            const { start, end } = { start: drawingStart, end: drawingPreviewEnd };
+            
+            g.append('line')
+                .attr('x1', xScale(new Date(start.x)))
+                .attr('y1', yScale(start.y))
+                .attr('x2', xScale(new Date(end.x)))
+                .attr('y2', yScale(end.y))
+                .attr('stroke', '#9AA5B5')
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '5,5');
+        }
+
         // Crosshair overlay
         const overlay = g
             .append('rect')
@@ -235,30 +273,62 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             .attr('fill', 'none')
             .attr('pointer-events', 'all');
 
-        overlay.on('mousemove', function (event) {
-            const [mouseX, mouseY] = d3.pointer(event);
+        const screenToDomain = (mouseX: number, mouseY: number) => {
             const x = xScale.invert(mouseX);
+            const y = yScale.invert(mouseY);
+                    
+            return { x: x.getTime(), y };
+        };
 
-            // Find closest candle
-            const bisect = d3.bisector<Candle, Date>((d) => d.time).left;
-            const index = bisect(data, x);
-            const candle = data[Math.min(index, data.length - 1)];
+        overlay
+            .on('click', function(event) {
+                if (!activeTool || activeTool === 'none' || !onAddDrawing) return;
+                
+                const [mouseX, mouseY] = d3.pointer(event);
+                const point = screenToDomain(mouseX, mouseY);
 
-            if (candle) {
-                setCrosshair({ x: mouseX, y: mouseY });
-                setTooltip({
-                    candle,
-                    x: mouseX,
-                    y: mouseY,
-                });
-            }
-        });
+                if (activeTool === 'trendline') {
+                    if (!drawingStart) {
+                        setDrawingStart(point);
+                    } else {
+                        onAddDrawing({
+                            type: 'trendline',
+                            points: [drawingStart, point],
+                            color: '#FFFFFF',
+                        });
 
-        overlay.on('mouseleave', () => {
-            setCrosshair(null);
-            setTooltip(null);
-        });
-    }, [data, width, height, showGrid, chartStyle, indicators]);
+                        setDrawingStart(null);
+                        setDrawingPreviewEnd(null);
+                    }
+                }
+            })
+            .on('mousemove', function (event) {
+                const [mouseX, mouseY] = d3.pointer(event);
+
+                if (activeTool && activeTool !== 'none') {
+                    if (drawingStart) {
+                        const point = screenToDomain(mouseX, mouseY);
+                        setDrawingPreviewEnd(point);
+                    }
+                } else {
+                    // crosshair logic
+                    const x = xScale.invert(mouseX);
+                    const bisect = d3.bisector<Candle, Date>((d) => d.time).left;
+                    const index = bisect(data, x);
+                    const candle = data[Math.min(index, data.length - 1)];
+                    if (candle) {
+                        setCrosshair({ x: mouseX, y: mouseY });
+                        setTooltip({ candle, x: mouseX, y: mouseY });
+                    }
+                }
+            })
+            .on('mouseleave', () => {
+                setCrosshair(null);
+                setTooltip(null);
+                setDrawingStart(null);
+                setDrawingPreviewEnd(null);
+            });
+    }, [data, width, height, showGrid, chartStyle, indicators, activeTool, drawings, onAddDrawing, drawingStart, drawingPreviewEnd]);
 
     return (
         <div className="candlestick-chart-container">
