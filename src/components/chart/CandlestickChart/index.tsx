@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { CandlestickChartProps } from '../../../types/props';
 import type { Candle, IndicatorResult, TooltipData } from '../../../types'; 
-import type { Drawing, Point } from '../../../types/drawing';
+import type { Point } from '../../../types/drawing';
 import './candlestick-chart.scss';
 
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
