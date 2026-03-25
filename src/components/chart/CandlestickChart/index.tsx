@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { CandlestickChartProps } from '../../../types/props';
-import type { Candle, IndicatorResult, TooltipData } from '../../../types'; 
+import type { Candle, TooltipData } from '../../../types';
 import type { Point } from '../../../types/drawing';
 import './candlestick-chart.scss';
 
@@ -145,26 +145,21 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 .attr('d', area);
         }
 
-        // Draw indicator overlays (main pane)
+        // Draw indicator overlays (main pane only — props are MainChartIndicator[])
         if (indicators && indicators.length > 0) {
-            indicators.forEach((ind: IndicatorResult) => {
-                if (ind.pane !== 'main') return;
+            const line = d3
+                .line<number | null>()
+                .x((_, i) => {
+                    const candle = data[i];
+                    return candle ? xScale(candle.time) : 0;
+                })
+                .y((d) => (d !== null ? yScale(d) : 0))
+                .defined((d) => d !== null);
 
-                // Create a line generator that works with nullable numbers
-                const line = d3.line<number | null>()
-                    .x((_, i) => {
-                        const candle = data[i];
-                        return candle ? xScale(candle.time) : 0;
-                    })
-                    .y(d => d !== null ? yScale(d) : 0)
-                    .defined(d => d !== null);
-
-                // Append the path
-                if (ind.id.startsWith('bollinger')) {
-                    const bands = ind.data as any; // temporary, we'll improve typing
-                    
-                    if (bands.upper && bands.middle && bands.lower) {
-                        // Draw upper band
+            for (const ind of indicators) {
+                switch (ind.id) {
+                    case 'bollinger': {
+                        const bands = ind.data;
                         g.append('path')
                             .datum(bands.upper)
                             .attr('fill', 'none')
@@ -172,14 +167,12 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                             .attr('stroke-width', 1.5)
                             .attr('opacity', 0.7)
                             .attr('d', line);
-                        // Draw middle band
                         g.append('path')
                             .datum(bands.middle)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
                             .attr('stroke-width', 2)
                             .attr('d', line);
-                        // Draw lower band
                         g.append('path')
                             .datum(bands.lower)
                             .attr('fill', 'none')
@@ -187,17 +180,19 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                             .attr('stroke-width', 1.5)
                             .attr('opacity', 0.7)
                             .attr('d', line);
+                        break;
                     }
-                } else {
-                    // Normal overlay (single line)
-                    g.append('path')
-                        .datum(ind.data as (number | null)[])
-                        .attr('fill', 'none')
-                        .attr('stroke', ind.color)
-                        .attr('stroke-width', 2)
-                        .attr('d', line);
+                    case 'sma':
+                    case 'ema':
+                        g.append('path')
+                            .datum(ind.data)
+                            .attr('fill', 'none')
+                            .attr('stroke', ind.color)
+                            .attr('stroke-width', 2)
+                            .attr('d', line);
+                        break;
                 }
-            });
+            }
         }
 
         // Time axis

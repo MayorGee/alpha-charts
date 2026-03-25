@@ -19,8 +19,7 @@ import {
     INDICATOR_PANE_HEIGHT,
     MACD_PANE_COLORS,
 } from './constants/chartLayout';
-import type { ChartStyle, DrawingTool, Symbol, Indicator } from './types';
-import type { MACDResult } from './lib/indicators/macd';
+import type { ChartStyle, Symbol, Indicator, IndicatorId } from './types';
 
 function App() {
     const [chartStyle, setChartStyle] = useState<ChartStyle>('candlestick');
@@ -37,7 +36,7 @@ function App() {
         selectedTimeframe,
     );
 
-    const { indicatorResults, separateIndicators } = useIndicatorResults(candles, activeIndicators);
+    const { mainIndicators, separateIndicators } = useIndicatorResults(candles, activeIndicators);
 
     const dimensions = useChartAreaDimensions({
         watchlistCollapsed,
@@ -57,7 +56,7 @@ function App() {
         }
     };
 
-    const handleRemoveIndicator = (id: string) => {
+    const handleRemoveIndicator = (id: IndicatorId) => {
         setActiveIndicators(activeIndicators.filter((i) => i.id !== id));
     };
 
@@ -81,7 +80,7 @@ function App() {
                 isConnected={isLive}
             />
             <Toolbar
-                activeTool={activeTool as DrawingTool}
+                activeTool={activeTool}
                 onToolChange={setActiveTool}
                 chartStyle={chartStyle}
                 onChartStyleChange={setChartStyle}
@@ -115,7 +114,7 @@ function App() {
                                 height={dimensions.mainChartHeight}
                                 showGrid={showGrid}
                                 chartStyle={chartStyle}
-                                indicators={indicatorResults}
+                                indicators={mainIndicators}
                                 drawings={drawings}
                                 onAddDrawing={addDrawing}
                                 activeTool={activeTool}
@@ -126,34 +125,34 @@ function App() {
                                 height={VOLUME_CHART_HEIGHT}
                             />
                             {separateIndicators.map((ind) => {
-                                if (ind.id === 'macd') {
-                                    const macdData = ind.data as MACDResult;
-
-                                    return (
-                                        <MACDPane
-                                            key={ind.id}
-                                            data={candles}
-                                            macd={macdData}
-                                            width={dimensions.chartWidth}
-                                            height={INDICATOR_PANE_HEIGHT}
-                                            lineColor={ind.color}
-                                            signalColor={MACD_PANE_COLORS.signal}
-                                            histogramPositiveColor={MACD_PANE_COLORS.histogramPositive}
-                                            histogramNegativeColor={MACD_PANE_COLORS.histogramNegative}
-                                        />
-                                    );
+                                switch (ind.id) {
+                                    case 'macd':
+                                        return (
+                                            <MACDPane
+                                                key={ind.id}
+                                                data={candles}
+                                                macd={ind.data}
+                                                width={dimensions.chartWidth}
+                                                height={INDICATOR_PANE_HEIGHT}
+                                                lineColor={ind.color}
+                                                signalColor={MACD_PANE_COLORS.signal}
+                                                histogramPositiveColor={MACD_PANE_COLORS.histogramPositive}
+                                                histogramNegativeColor={MACD_PANE_COLORS.histogramNegative}
+                                            />
+                                        );
+                                    case 'rsi':
+                                        return (
+                                            <IndicatorPane
+                                                key={ind.id}
+                                                data={candles}
+                                                indicatorData={ind.data}
+                                                color={ind.color}
+                                                label={ind.id.toUpperCase()}
+                                                width={dimensions.chartWidth}
+                                                height={INDICATOR_PANE_HEIGHT}
+                                            />
+                                        );
                                 }
-                                return (
-                                    <IndicatorPane
-                                        key={ind.id}
-                                        data={candles}
-                                        indicatorData={ind.data as (number | null)[]}
-                                        color={ind.color}
-                                        label={ind.id.toUpperCase()}
-                                        width={dimensions.chartWidth}
-                                        height={INDICATOR_PANE_HEIGHT}
-                                    />
-                                );
                             })}
                         </>
                     )}

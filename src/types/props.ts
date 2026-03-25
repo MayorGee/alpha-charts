@@ -1,6 +1,14 @@
 import type { MACDResult } from '../lib/indicators/macd';
 import type { Drawing } from './drawing';
-import type { Candle, ChartStyle, DrawingTool, Indicator, IndicatorResult, Symbol } from './index';
+import type {
+    Candle,
+    ChartStyle,
+    DrawingTool,
+    Indicator,
+    IndicatorId,
+    MainChartIndicator,
+    Symbol,
+} from './index';
 
 export interface HeaderProps {
     symbol: Symbol;
@@ -18,7 +26,7 @@ export interface ToolbarProps {
     onAddIndicator: () => void;
     onClearDrawings: () => void;
     activeIndicators?: Indicator[];           
-    onRemoveIndicator?: (id: string) => void; 
+    onRemoveIndicator?: (id: IndicatorId) => void;
 }
 
 export interface WatchlistProps {
@@ -46,10 +54,10 @@ export interface CandlestickChartProps {
     height: number;
     showGrid: boolean;
     chartStyle: ChartStyle;
-    indicators?: IndicatorResult[];
+    indicators?: MainChartIndicator[];
     drawings?: Drawing[];
     onAddDrawing?: (drawing: Omit<Drawing, 'id' | 'createdAt'>) => void;
-    activeTool?: string;
+    activeTool?: DrawingTool;
 }
 
 export interface VolumeChartProps {

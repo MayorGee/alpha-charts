@@ -4,63 +4,84 @@ import { calculateEMA } from '../lib/indicators/ema';
 import { calculateRSI } from '../lib/indicators/rsi';
 import { calculateBollingerBands } from '../lib/indicators/bollinger';
 import { calculateMACD } from '../lib/indicators/macd';
-import type { Candle, Indicator, IndicatorResult } from '../types';
+import {
+    type Candle,
+    type Indicator,
+    type IndicatorResult,
+    isMainChartIndicator,
+    isSeparateChartIndicator,
+} from '../types';
 
 export function useIndicatorResults(candles: Candle[], activeIndicators: Indicator[]) {
-    const indicatorResults = useMemo(() => {
+    const indicatorResults = useMemo((): IndicatorResult[] => {
         if (!candles.length) return [];
-        
-        return activeIndicators
-            .map((ind) => {
-                switch (ind.id) {
-                    case 'sma':
-                        return {
-                            id: ind.id,
+
+        return activeIndicators.flatMap((ind): IndicatorResult[] => {
+            switch (ind.id) {
+                case 'sma':
+                    return [
+                        {
+                            id: 'sma',
+                            pane: 'main',
+                            color: ind.color,
                             data: calculateSMA(candles, 20),
+                        },
+                    ];
+                case 'ema':
+                    return [
+                        {
+                            id: 'ema',
+                            pane: 'main',
                             color: ind.color,
-                            pane: 'main' as const,
-                        };
-                    case 'ema':
-                        return {
-                            id: ind.id,
                             data: calculateEMA(candles, 12),
+                        },
+                    ];
+                case 'rsi':
+                    return [
+                        {
+                            id: 'rsi',
+                            pane: 'separate',
                             color: ind.color,
-                            pane: 'main' as const,
-                        };
-                    case 'rsi':
-                        return {
-                            id: ind.id,
                             data: calculateRSI(candles, 14),
+                        },
+                    ];
+                case 'bollinger': {
+                    const bands = calculateBollingerBands(candles, 20, 2);
+                    return [
+                        {
+                            id: 'bollinger',
+                            pane: 'main',
                             color: ind.color,
-                            pane: 'separate' as const,
-                        };
-                    case 'bollinger': {
-                        const bands = calculateBollingerBands(candles, 20, 2);
-                        return {
-                            id: ind.id,
                             data: bands,
-                            color: ind.color,
-                            pane: 'main' as const,
-                        };
-                    }
-                    case 'macd':
-                        return {
-                            id: ind.id,
-                            data: calculateMACD(candles, 12, 26, 9),
-                            color: ind.color,
-                            pane: 'separate' as const,
-                        };
-                    default:
-                        return null;
+                        },
+                    ];
                 }
-            })
-            .filter(Boolean) as IndicatorResult[];
+                case 'macd':
+                    return [
+                        {
+                            id: 'macd',
+                            pane: 'separate',
+                            color: ind.color,
+                            data: calculateMACD(candles, 12, 26, 9),
+                        },
+                    ];
+                default: {
+                    const _exhaustive: never = ind.id;
+                    return _exhaustive;
+                }
+            }
+        });
     }, [candles, activeIndicators]);
 
-    const separateIndicators = useMemo(
-        () => indicatorResults.filter((ind) => ind.pane === 'separate'),
+    const mainIndicators = useMemo(
+        () => indicatorResults.filter(isMainChartIndicator),
         [indicatorResults],
     );
 
-    return { indicatorResults, separateIndicators };
+    const separateIndicators = useMemo(
+        () => indicatorResults.filter(isSeparateChartIndicator),
+        [indicatorResults],
+    );
+
+    return { mainIndicators, separateIndicators };
 }

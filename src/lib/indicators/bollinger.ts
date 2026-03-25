@@ -1,10 +1,6 @@
-import { type Candle } from '../../types';
+import { type Candle, type BollingerBands } from '../../types';
 
-export function calculateBollingerBands(data: Candle[], period = 20, stdDev = 2): {
-    upper: (number | null)[];
-    middle: (number | null)[];
-    lower: (number | null)[];
-} {
+export function calculateBollingerBands(data: Candle[], period = 20, stdDev = 2): BollingerBands {
     const middle: (number | null)[] = [];
     const upper: (number | null)[] = [];
     const lower: (number | null)[] = [];

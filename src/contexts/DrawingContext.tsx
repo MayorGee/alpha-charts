@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import { type Drawing } from '../types/drawing';
+import type { DrawingTool } from '../types';
 
 interface DrawingContextType {
     drawings: Drawing[];
@@ -7,15 +8,15 @@ interface DrawingContextType {
     updateDrawing: (id: string, updates: Partial<Drawing>) => void;
     deleteDrawing: (id: string) => void;
     clearDrawings: () => void;
-    activeTool: string;
-    setActiveTool: (tool: string) => void;
+    activeTool: DrawingTool;
+    setActiveTool: (tool: DrawingTool) => void;
 }
 
 const DrawingContext = createContext<DrawingContextType | undefined>(undefined);
 
 export const DrawingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [drawings, setDrawings] = useState<Drawing[]>([]);
-    const [activeTool, setActiveTool] = useState('none');
+    const [activeTool, setActiveTool] = useState<DrawingTool>('none');
 
     const addDrawing = (drawing: Omit<Drawing, 'id' | 'createdAt'>) => {
         const newDrawing: Drawing = {
