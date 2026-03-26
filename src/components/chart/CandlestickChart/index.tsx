@@ -10,6 +10,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     width,
     height,
     showGrid,
+    showTooltip,
     chartStyle,
     indicators,
     drawings,
@@ -18,12 +19,23 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     onDeleteDrawing,
     activeTool
 }) => {
+    const fibLevelConfigs = [
+        { value: 0, color: '#ef5350' },
+        { value: 0.236, color: '#ff7043' },
+        { value: 0.382, color: '#ffa726' },
+        { value: 0.5, color: '#fdd835' },
+        { value: 0.618, color: '#66bb6a' },
+        { value: 0.786, color: '#42a5f5' },
+        { value: 1, color: '#ab47bc' },
+    ] as const;
     const svgRef = useRef<SVGSVGElement>(null);
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
     const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(null);
+    const [zoomTransform, setZoomTransform] = useState(d3.zoomIdentity);
     const {
         drawingStart,
         drawingPreviewEnd,
+        isDragging,
         deleteModal,
         closeDeleteModal,
         handleOverlayClick,
@@ -34,6 +46,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         resetDrawingInteraction,
         confirmDeleteDrawing,
     } = useChartDrawingInteractions();
+
+    useEffect(() => {
+        if (!showTooltip) {
+            setCrosshair(null);
+            setTooltip(null);
+        }
+    }, [showTooltip]);
     
     useEffect(() => {
          if (!svgRef.current || data.length === 0 || width <= 0 || height <= 0 || isNaN(width) || isNaN(height)) {
@@ -52,18 +71,22 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
         // Scales
-        const xScale = d3
+        const baseXScale = d3
             .scaleTime()
             .domain(d3.extent(data, (d) => d.time) as [Date, Date])
             .range([0, chartWidth]);
 
-        const yScale = d3
+        const baseYScale = d3
             .scaleLinear()
             .domain([
                 d3.min(data, (d) => d.low)! * 0.999,
                 d3.max(data, (d) => d.high)! * 1.001,
             ])
             .range([chartHeight, 0]);
+        const xScale = zoomTransform.rescaleX(baseXScale);
+        const yScale = zoomTransform.rescaleY(baseYScale);
+        const [xMin, xMax] = xScale.domain();
+        const visibleCandles = data.filter((d) => d.time >= xMin && d.time <= xMax);
         const firstTime = data[0]?.time.getTime();
         const lastTime = data[data.length - 1]?.time.getTime();
         const minPrice = d3.min(data, (d) => d.low);
@@ -100,12 +123,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
         if (chartStyle === 'candlestick') {
             // Candlestick width
-            const candleWidth = Math.max(1, Math.min(chartWidth / data.length - 2, 8));
+            const visibleCount = Math.max(1, visibleCandles.length);
+            const candleWidth = Math.max(1, Math.min(chartWidth / visibleCount - 2, 20));
 
             // Draw candlesticks
             const candles = g
                 .selectAll('.candle')
-                .data(data)
+                .data(visibleCandles)
                 .join('g')
                 .attr('class', 'candle')
                 .attr('transform', (d) => `translate(${xScale(d.time)},0)`);
@@ -263,6 +287,49 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                             .attr('stroke-width', 2)
                             .attr('stroke-dasharray', 'none');
                         break;
+                    case 'fibonacci': {
+                        const x1 = xScale(new Date(p1.x));
+                        const x2 = xScale(new Date(p2.x));
+                        const low = Math.min(p1.y, p2.y);
+                        const high = Math.max(p1.y, p2.y);
+                        const span = high - low;
+
+                        fibLevelConfigs.forEach(({ value, color }) => {
+                            const y = yScale(low + span * value);
+                            g.append('line')
+                                .attr('x1', x1)
+                                .attr('y1', y)
+                                .attr('x2', x2)
+                                .attr('y2', y)
+                                .attr('stroke', color)
+                                .attr('stroke-width', value === 0.5 ? 1.8 : 1.2)
+                                .attr('opacity', 0.9);
+
+                            g.append('text')
+                                .attr('x', Math.max(x1, x2) + 6)
+                                .attr('y', y + 3)
+                                .attr('fill', color)
+                                .attr('font-size', 10)
+                                .attr('font-family', 'JetBrains Mono')
+                                .text(value.toFixed(3));
+                        });
+
+                        g.append('circle')
+                            .attr('cx', x1)
+                            .attr('cy', yScale(p1.y))
+                            .attr('r', 4)
+                            .attr('fill', '#FFFFFF')
+                            .attr('stroke', '#2A2F38')
+                            .attr('stroke-width', 1.2);
+                        g.append('circle')
+                            .attr('cx', x2)
+                            .attr('cy', yScale(p2.y))
+                            .attr('r', 4)
+                            .attr('fill', '#FFFFFF')
+                            .attr('stroke', '#2A2F38')
+                            .attr('stroke-width', 1.2);
+                        break;
+                    }
                     default:
                         break;
                 }
@@ -270,17 +337,38 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         }
 
         // Draw pending preview
-        if (activeTool === 'trendline' && drawingStart && drawingPreviewEnd) {
+        if ((activeTool === 'trendline' || activeTool === 'fibonacci') && drawingStart && drawingPreviewEnd) {
             const { start, end } = { start: drawingStart, end: drawingPreviewEnd };
-            
-            g.append('line')
-                .attr('x1', xScale(new Date(start.x)))
-                .attr('y1', yScale(start.y))
-                .attr('x2', xScale(new Date(end.x)))
-                .attr('y2', yScale(end.y))
-                .attr('stroke', '#9AA5B5')
-                .attr('stroke-width', 2)
-                .attr('stroke-dasharray', '5,5');
+
+            if (activeTool === 'trendline') {
+                g.append('line')
+                    .attr('x1', xScale(new Date(start.x)))
+                    .attr('y1', yScale(start.y))
+                    .attr('x2', xScale(new Date(end.x)))
+                    .attr('y2', yScale(end.y))
+                    .attr('stroke', '#9AA5B5')
+                    .attr('stroke-width', 2)
+                    .attr('stroke-dasharray', '5,5');
+            } else {
+                const x1 = xScale(new Date(start.x));
+                const x2 = xScale(new Date(end.x));
+                const low = Math.min(start.y, end.y);
+                const high = Math.max(start.y, end.y);
+                const span = high - low;
+
+                fibLevelConfigs.forEach(({ value, color }) => {
+                    const y = yScale(low + span * value);
+                    g.append('line')
+                        .attr('x1', x1)
+                        .attr('y1', y)
+                        .attr('x2', x2)
+                        .attr('y2', y)
+                        .attr('stroke', color)
+                        .attr('stroke-width', 1.2)
+                        .attr('stroke-dasharray', '5,5')
+                        .attr('opacity', 0.8);
+                });
+            }
         }
 
         // Crosshair overlay
@@ -314,6 +402,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             })
             .on('mousemove', function (event) {
                 const [mouseX, mouseY] = d3.pointer(event);
+                if (deleteModal) {
+                    d3.select(this).style('cursor', 'default');
+                    return;
+                }
                 d3.select(this).style(
                     'cursor',
                     getOverlayCursor({ mouseX, mouseY, activeTool, drawings, xScale, yScale }),
@@ -329,7 +421,12 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     onUpdateDrawing,
                 });
 
-                if (!activeTool || activeTool === 'none') {
+                const allowHoverTooltip =
+                    showTooltip &&
+                    (!activeTool || activeTool === 'none') &&
+                    !deleteModal &&
+                    !isDragging;
+                if (allowHoverTooltip) {
                     // crosshair logic
                     const x = xScale.invert(mouseX);
                     const bisect = d3.bisector<Candle, Date>((d) => d.time).left;
@@ -339,6 +436,9 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                         setCrosshair({ x: mouseX, y: mouseY });
                         setTooltip({ candle, x: mouseX, y: mouseY });
                     }
+                } else {
+                    setCrosshair(null);
+                    setTooltip(null);
                 }
             })
             .on('mouseup', function () {
@@ -350,12 +450,22 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 setTooltip(null);
                 resetDrawingInteraction();
             });
+
+        const handleWindowMouseUp = () => {
+            handleOverlayMouseUp({ onUpdateDrawing });
+        };
+        window.addEventListener('mouseup', handleWindowMouseUp);
+
+        return () => {
+            window.removeEventListener('mouseup', handleWindowMouseUp);
+        };
     }, [
         data,
         width,
         height,
         showGrid,
         chartStyle,
+        showTooltip,
         indicators,
         activeTool,
         drawings,
@@ -363,13 +473,51 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         onUpdateDrawing,
         drawingStart,
         drawingPreviewEnd,
+        isDragging,
+        zoomTransform,
         handleOverlayClick,
         handleOverlayMouseDown,
         handleOverlayMouseUp,
         getOverlayCursor,
         handleDrawingPreviewMove,
         resetDrawingInteraction,
+        deleteModal,
     ]);
+
+    useEffect(() => {
+        if (!svgRef.current || width <= 0 || height <= 0) return;
+
+        const svg = d3.select(svgRef.current);
+        const zoomBehavior = d3
+            .zoom<SVGSVGElement, unknown>()
+            .scaleExtent([1, 24])
+            .translateExtent([
+                [-width * 2, -height * 2],
+                [width * 3, height * 3],
+            ])
+            .extent([
+                [0, 0],
+                [width, height],
+            ])
+            .filter((event) => {
+                if (activeTool && activeTool !== 'none') return false;
+                if (deleteModal) return false;
+                return event.type === 'wheel' || event.type === 'mousedown' || event.type === 'dblclick';
+            })
+            .on('zoom', (event) => {
+                const t = event.transform;
+                setZoomTransform((prev) =>
+                    prev.k === t.k && prev.x === t.x && prev.y === t.y ? prev : t,
+                );
+            });
+
+        svg.call(zoomBehavior);
+        svg.call(zoomBehavior.transform, zoomTransform);
+
+        return () => {
+            svg.on('.zoom', null);
+        };
+    }, [activeTool, deleteModal, width, height, zoomTransform]);
 
     return (
         <div className="candlestick-chart-container">

@@ -60,13 +60,33 @@ interface DragState {
     lastPoint: { x: number; y: number };
 }
 
+interface ResizeState {
+    drawingId: string;
+    handleIndex: 0 | 1;
+}
+
 export function useChartDrawingInteractions() {
+    const fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
     const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null);
     const [drawingPreviewEnd, setDrawingPreviewEnd] = useState<{ x: number; y: number } | null>(null);
     const [deleteModal, setDeleteModal] = useState<DeleteModalState | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const dragStateRef = useRef<DragState | null>(null);
+    const resizeStateRef = useRef<ResizeState | null>(null);
     const hasMovedDuringDragRef = useRef(false);
+    const suppressNextClickRef = useRef(false);
+    const ignoreClickUntilRef = useRef(0);
+
+    const clearDragAndResizeState = () => {
+        dragStateRef.current = null;
+        resizeStateRef.current = null;
+        setIsDragging(false);
+    };
+
+    const suppressUpcomingClick = (durationMs = 220) => {
+        suppressNextClickRef.current = true;
+        ignoreClickUntilRef.current = performance.now() + durationMs;
+    };
 
     const pointToSegmentDistance = (
         point: { x: number; y: number },
@@ -110,12 +130,30 @@ export function useChartDrawingInteractions() {
             if (
                 drawing.type !== 'trendline' &&
                 drawing.type !== 'horizontal' &&
-                drawing.type !== 'vertical'
+                drawing.type !== 'vertical' &&
+                drawing.type !== 'fibonacci'
             ) {
                 continue;
             }
 
             const [p1, p2] = drawing.points;
+            if (drawing.type === 'fibonacci') {
+                const x1 = xScale(new Date(p1.x));
+                const x2 = xScale(new Date(p2.x));
+                const low = Math.min(p1.y, p2.y);
+                const high = Math.max(p1.y, p2.y);
+                const span = high - low;
+
+                for (const level of fibLevels) {
+                    const yValue = low + span * level;
+                    const y = yScale(yValue);
+                    const start = { x: x1, y };
+                    const end = { x: x2, y };
+                    if (pointToSegmentDistance(point, start, end) <= hitTolerancePx) return drawing.id;
+                }
+                continue;
+            }
+
             const start = { x: xScale(new Date(p1.x)), y: yScale(p1.y) };
             const end = { x: xScale(new Date(p2.x)), y: yScale(p2.y) };
             if (pointToSegmentDistance(point, start, end) <= hitTolerancePx) return drawing.id;
@@ -126,6 +164,33 @@ export function useChartDrawingInteractions() {
 
     const screenToDomain = (mouseX: number, mouseY: number, { xScale, yScale }: ScaleArgs) => {
         return { x: xScale.invert(mouseX).getTime(), y: yScale.invert(mouseY) };
+    };
+
+    const findFibonacciHandleAtPosition = (
+        mouseX: number,
+        mouseY: number,
+        drawings: Drawing[] | undefined,
+        { xScale, yScale }: ScaleArgs,
+    ) => {
+        if (!drawings || drawings.length === 0) return null;
+        const handleTolerancePx = 8;
+
+        for (let i = drawings.length - 1; i >= 0; i -= 1) {
+            const drawing = drawings[i];
+            if (drawing.type !== 'fibonacci' || drawing.points.length !== 2) continue;
+
+            for (const handleIndex of [0, 1] as const) {
+                const p = drawing.points[handleIndex];
+                const px = xScale(new Date(p.x));
+                const py = yScale(p.y);
+                const distance = Math.hypot(mouseX - px, mouseY - py);
+                if (distance <= handleTolerancePx) {
+                    return { drawingId: drawing.id, handleIndex };
+                }
+            }
+        }
+
+        return null;
     };
 
     const handleOverlayClick = ({
@@ -140,6 +205,12 @@ export function useChartDrawingInteractions() {
         yScale,
         bounds,
     }: ClickArgs) => {
+        if (deleteModal) return;
+        if (performance.now() < ignoreClickUntilRef.current) return;
+        if (suppressNextClickRef.current) {
+            suppressNextClickRef.current = false;
+            return;
+        }
         if (hasMovedDuringDragRef.current) {
             hasMovedDuringDragRef.current = false;
             return;
@@ -147,6 +218,7 @@ export function useChartDrawingInteractions() {
 
         const clickedDrawingId = findDrawingIdAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
         if (clickedDrawingId) {
+            clearDragAndResizeState();
             setDeleteModal({ drawingId: clickedDrawingId, x: clientX, y: clientY });
             return;
         }
@@ -156,14 +228,14 @@ export function useChartDrawingInteractions() {
 
         const point = screenToDomain(mouseX, mouseY, { xScale, yScale });
 
-        if (activeTool === 'trendline') {
+        if (activeTool === 'trendline' || activeTool === 'fibonacci') {
             if (!drawingStart) {
                 setDrawingStart(point);
                 return;
             }
 
             onAddDrawing({
-                type: 'trendline',
+                type: activeTool,
                 points: [drawingStart, point],
                 color: '#FFFFFF',
             });
@@ -197,7 +269,10 @@ export function useChartDrawingInteractions() {
     };
 
     const getOverlayCursor = ({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: HoverArgs) => {
+        if (resizeStateRef.current) return 'nwse-resize';
         if (isDragging) return 'grabbing';
+        const hoveredHandle = findFibonacciHandleAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
+        if (hoveredHandle) return 'nwse-resize';
         const hoveredDrawingId = findDrawingIdAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
         if (hoveredDrawingId) return 'pointer';
         if (activeTool && activeTool !== 'none') return 'crosshair';
@@ -205,7 +280,17 @@ export function useChartDrawingInteractions() {
     };
 
     const handleOverlayMouseDown = ({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: MouseDownArgs) => {
+        if (deleteModal) return;
         if (activeTool && activeTool !== 'none') return;
+        const fibHandle = findFibonacciHandleAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
+        if (fibHandle) {
+            resizeStateRef.current = fibHandle;
+            hasMovedDuringDragRef.current = false;
+            setDeleteModal(null);
+            setIsDragging(true);
+            return;
+        }
+
         const drawingId = findDrawingIdAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
         if (!drawingId) return;
         dragStateRef.current = {
@@ -226,6 +311,20 @@ export function useChartDrawingInteractions() {
         yScale,
         onUpdateDrawing,
     }: HoverArgs & { onUpdateDrawing?: UpdateDrawingHandler }) => {
+        if (deleteModal) return;
+        if (resizeStateRef.current && onUpdateDrawing && drawings) {
+            const { drawingId, handleIndex } = resizeStateRef.current;
+            const drawing = drawings.find((d) => d.id === drawingId);
+            if (!drawing || drawing.points.length !== 2) return;
+            const currentPoint = screenToDomain(mouseX, mouseY, { xScale, yScale });
+            const nextPoints = drawing.points.map((p, idx) =>
+                idx === handleIndex ? currentPoint : p,
+            );
+            onUpdateDrawing(drawingId, { points: nextPoints });
+            hasMovedDuringDragRef.current = true;
+            return;
+        }
+
         if (dragStateRef.current && onUpdateDrawing && drawings) {
             const currentPoint = screenToDomain(mouseX, mouseY, { xScale, yScale });
             const { drawingId, lastPoint } = dragStateRef.current;
@@ -250,20 +349,30 @@ export function useChartDrawingInteractions() {
     };
 
     const handleOverlayMouseUp = ({ onUpdateDrawing }: MouseUpArgs) => {
-        if (!dragStateRef.current || !onUpdateDrawing) return;
-        dragStateRef.current = null;
-        setIsDragging(false);
+        if (deleteModal) return;
+        if (!onUpdateDrawing) return;
+        if (resizeStateRef.current) {
+            suppressUpcomingClick();
+            clearDragAndResizeState();
+            return;
+        }
+        if (!dragStateRef.current) return;
+        suppressUpcomingClick();
+        clearDragAndResizeState();
     };
 
     const resetDrawingInteraction = () => {
-        dragStateRef.current = null;
+        clearDragAndResizeState();
         hasMovedDuringDragRef.current = false;
-        setIsDragging(false);
         setDrawingStart(null);
         setDrawingPreviewEnd(null);
     };
 
-    const closeDeleteModal = () => setDeleteModal(null);
+    const closeDeleteModal = () => {
+        clearDragAndResizeState();
+        suppressUpcomingClick();
+        setDeleteModal(null);
+    };
 
     const confirmDeleteDrawing = (onDeleteDrawing?: DeleteDrawingHandler) => {
         if (!deleteModal || !onDeleteDrawing) return;
@@ -274,6 +383,7 @@ export function useChartDrawingInteractions() {
     return {
         drawingStart,
         drawingPreviewEnd,
+        isDragging,
         deleteModal,
         closeDeleteModal,
         handleOverlayClick,

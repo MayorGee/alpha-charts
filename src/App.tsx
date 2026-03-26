@@ -24,6 +24,7 @@ import type { ChartStyle, Symbol, Indicator, IndicatorId } from './types';
 function App() {
     const [chartStyle, setChartStyle] = useState<ChartStyle>('candlestick');
     const [showGrid, setShowGrid] = useState(true);
+    const [showTooltip, setShowTooltip] = useState(true);
     const [selectedSymbol, setSelectedSymbol] = useState<Symbol>(mockWatchlistSymbols[0]);
     const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
@@ -108,6 +109,8 @@ function App() {
                 onChartStyleChange={setChartStyle}
                 showGrid={showGrid}
                 onGridToggle={() => setShowGrid(!showGrid)}
+                showTooltip={showTooltip}
+                onTooltipToggle={() => setShowTooltip(!showTooltip)}
                 onAddIndicator={() => setIndicatorDialogOpen(true)}
                 onClearDrawings={clearDrawings}
                 activeIndicators={activeIndicators}
@@ -135,6 +138,7 @@ function App() {
                                 width={dimensions.chartWidth}
                                 height={dimensions.mainChartHeight}
                                 showGrid={showGrid}
+                                showTooltip={showTooltip}
                                 chartStyle={chartStyle}
                                 indicators={mainIndicators}
                                 drawings={drawings}

@@ -33,7 +33,7 @@ export interface Timeframe {
     minutes: number; // duration in minutes for calculations
 }
 
-export type DrawingTool = 'trendline' | 'horizontal' | 'vertical' | 'none';
+export type DrawingTool = 'trendline' | 'horizontal' | 'vertical' | 'fibonacci' | 'none';
 export type ChartStyle = 'candlestick' | 'line';
 
 export interface TooltipData {

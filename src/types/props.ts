@@ -23,6 +23,8 @@ export interface ToolbarProps {
     onChartStyleChange: (style: ChartStyle) => void;
     showGrid: boolean;
     onGridToggle: () => void;
+    showTooltip: boolean;
+    onTooltipToggle: () => void;
     onAddIndicator: () => void;
     onClearDrawings: () => void;
     activeIndicators?: Indicator[];           
@@ -53,6 +55,7 @@ export interface CandlestickChartProps {
     width: number;
     height: number;
     showGrid: boolean;
+    showTooltip: boolean;
     chartStyle: ChartStyle;
     indicators?: MainChartIndicator[];
     drawings?: Drawing[];

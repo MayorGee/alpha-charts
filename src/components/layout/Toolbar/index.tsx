@@ -5,6 +5,7 @@ import {
     Eraser,
     Plus,
     Grid3x3,
+    Info,
     CandlestickChart,
     LineChart,
     Settings,
@@ -13,6 +14,21 @@ import type { ToolbarProps } from '../../../types/props';
 import type { DrawingTool } from '../../../types';
 import './toolbar.scss';
 
+function FibonacciIcon() {
+    return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+            <path d="M4 19.5H20" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M4 16.4H20" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M4 13.6H20" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M4 10.2H20" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M4 6.5H20" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M5.2 18.8L18.5 7.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            <circle cx="5.2" cy="18.8" r="1.1" fill="currentColor" />
+            <circle cx="18.5" cy="7.2" r="1.1" fill="currentColor" />
+        </svg>
+    );
+}
+
 export function Toolbar({
     activeTool,
     onToolChange,
@@ -20,6 +36,8 @@ export function Toolbar({
     onChartStyleChange,
     showGrid,
     onGridToggle,
+    showTooltip,
+    onTooltipToggle,
     onAddIndicator,
     onClearDrawings,
     activeIndicators = [],
@@ -29,6 +47,7 @@ export function Toolbar({
         { id: 'trendline' as DrawingTool, icon: TrendingUp, label: 'Trendline' },
         { id: 'horizontal' as DrawingTool, icon: Minus, label: 'Horizontal Line' },
         { id: 'vertical' as DrawingTool, icon: ArrowRight, label: 'Vertical Line' },
+        { id: 'fibonacci' as DrawingTool, icon: FibonacciIcon, label: 'Fibonacci Retracement' },
     ];
 
     return (
@@ -112,6 +131,14 @@ export function Toolbar({
                     title="Toggle Grid"
                 >
                     <Grid3x3 />
+                </button>
+
+                <button
+                    className={`toolbar__button ${showTooltip ? 'toolbar__button--active' : ''}`}
+                    onClick={onTooltipToggle}
+                    title="Toggle Data Tooltip"
+                >
+                    <Info />
                 </button>
 
                 {/* Settings (placeholder) */}
