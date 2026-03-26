@@ -84,6 +84,7 @@ function App() {
         setActiveTool,
         drawings,
         addDrawing,
+        updateDrawing,
         deleteDrawing,
         clearDrawings,
     } = useDrawing();
@@ -138,6 +139,7 @@ function App() {
                                 indicators={mainIndicators}
                                 drawings={drawings}
                                 onAddDrawing={addDrawing}
+                                onUpdateDrawing={updateDrawing}
                                 onDeleteDrawing={deleteDrawing}
                                 activeTool={activeTool}
                             />

@@ -14,6 +14,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     indicators,
     drawings,
     onAddDrawing,
+    onUpdateDrawing,
     onDeleteDrawing,
     activeTool
 }) => {
@@ -26,6 +27,8 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         deleteModal,
         closeDeleteModal,
         handleOverlayClick,
+        handleOverlayMouseDown,
+        handleOverlayMouseUp,
         getOverlayCursor,
         handleDrawingPreviewMove,
         resetDrawingInteraction,
@@ -290,6 +293,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             .attr('pointer-events', 'all');
 
         overlay
+            .on('mousedown', function (event) {
+                const [mouseX, mouseY] = d3.pointer(event);
+                handleOverlayMouseDown({ mouseX, mouseY, activeTool, drawings, xScale, yScale });
+            })
             .on('click', function(event) {
                 const [mouseX, mouseY] = d3.pointer(event);
                 handleOverlayClick({
@@ -312,7 +319,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     getOverlayCursor({ mouseX, mouseY, activeTool, drawings, xScale, yScale }),
                 );
 
-                handleDrawingPreviewMove({ mouseX, mouseY, activeTool, drawings, xScale, yScale });
+                handleDrawingPreviewMove({
+                    mouseX,
+                    mouseY,
+                    activeTool,
+                    drawings,
+                    xScale,
+                    yScale,
+                    onUpdateDrawing,
+                });
 
                 if (!activeTool || activeTool === 'none') {
                     // crosshair logic
@@ -325,6 +340,9 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                         setTooltip({ candle, x: mouseX, y: mouseY });
                     }
                 }
+            })
+            .on('mouseup', function () {
+                handleOverlayMouseUp({ onUpdateDrawing });
             })
             .on('mouseleave', () => {
                 overlay.style('cursor', 'default');
@@ -342,9 +360,12 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         activeTool,
         drawings,
         onAddDrawing,
+        onUpdateDrawing,
         drawingStart,
         drawingPreviewEnd,
         handleOverlayClick,
+        handleOverlayMouseDown,
+        handleOverlayMouseUp,
         getOverlayCursor,
         handleDrawingPreviewMove,
         resetDrawingInteraction,

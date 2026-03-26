@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type * as d3 from 'd3';
 import type { Drawing } from '../types/drawing';
 import type { DrawingTool } from '../types';
 
 type AddDrawingInput = Omit<Drawing, 'id' | 'createdAt'>;
 type AddDrawingHandler = (drawing: AddDrawingInput) => void;
+type UpdateDrawingHandler = (id: string, updates: Partial<Drawing>) => void;
 type DeleteDrawingHandler = (id: string) => void;
 
 export interface DeleteModalState {
@@ -43,10 +44,29 @@ interface HoverArgs extends ScaleArgs {
     drawings?: Drawing[];
 }
 
+interface MouseDownArgs extends ScaleArgs {
+    mouseX: number;
+    mouseY: number;
+    activeTool?: DrawingTool;
+    drawings?: Drawing[];
+}
+
+interface MouseUpArgs {
+    onUpdateDrawing?: UpdateDrawingHandler;
+}
+
+interface DragState {
+    drawingId: string;
+    lastPoint: { x: number; y: number };
+}
+
 export function useChartDrawingInteractions() {
     const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null);
     const [drawingPreviewEnd, setDrawingPreviewEnd] = useState<{ x: number; y: number } | null>(null);
     const [deleteModal, setDeleteModal] = useState<DeleteModalState | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStateRef = useRef<DragState | null>(null);
+    const hasMovedDuringDragRef = useRef(false);
 
     const pointToSegmentDistance = (
         point: { x: number; y: number },
@@ -120,6 +140,11 @@ export function useChartDrawingInteractions() {
         yScale,
         bounds,
     }: ClickArgs) => {
+        if (hasMovedDuringDragRef.current) {
+            hasMovedDuringDragRef.current = false;
+            return;
+        }
+
         const clickedDrawingId = findDrawingIdAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
         if (clickedDrawingId) {
             setDeleteModal({ drawingId: clickedDrawingId, x: clientX, y: clientY });
@@ -172,19 +197,68 @@ export function useChartDrawingInteractions() {
     };
 
     const getOverlayCursor = ({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: HoverArgs) => {
+        if (isDragging) return 'grabbing';
         const hoveredDrawingId = findDrawingIdAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
         if (hoveredDrawingId) return 'pointer';
         if (activeTool && activeTool !== 'none') return 'crosshair';
         return 'default';
     };
 
-    const handleDrawingPreviewMove = ({ mouseX, mouseY, activeTool, xScale, yScale }: HoverArgs) => {
+    const handleOverlayMouseDown = ({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: MouseDownArgs) => {
+        if (activeTool && activeTool !== 'none') return;
+        const drawingId = findDrawingIdAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
+        if (!drawingId) return;
+        dragStateRef.current = {
+            drawingId,
+            lastPoint: screenToDomain(mouseX, mouseY, { xScale, yScale }),
+        };
+        hasMovedDuringDragRef.current = false;
+        setDeleteModal(null);
+        setIsDragging(true);
+    };
+
+    const handleDrawingPreviewMove = ({
+        mouseX,
+        mouseY,
+        activeTool,
+        drawings,
+        xScale,
+        yScale,
+        onUpdateDrawing,
+    }: HoverArgs & { onUpdateDrawing?: UpdateDrawingHandler }) => {
+        if (dragStateRef.current && onUpdateDrawing && drawings) {
+            const currentPoint = screenToDomain(mouseX, mouseY, { xScale, yScale });
+            const { drawingId, lastPoint } = dragStateRef.current;
+            const drawingToMove = drawings.find((d) => d.id === drawingId);
+            if (!drawingToMove || drawingToMove.points.length !== 2) return;
+
+            const dx = currentPoint.x - lastPoint.x;
+            const dy = currentPoint.y - lastPoint.y;
+            if (dx !== 0 || dy !== 0) {
+                onUpdateDrawing(drawingId, {
+                    points: drawingToMove.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+                });
+                dragStateRef.current = { drawingId, lastPoint: currentPoint };
+                hasMovedDuringDragRef.current = true;
+            }
+            return;
+        }
+
         if (activeTool && activeTool !== 'none' && drawingStart) {
             setDrawingPreviewEnd(screenToDomain(mouseX, mouseY, { xScale, yScale }));
         }
     };
 
+    const handleOverlayMouseUp = ({ onUpdateDrawing }: MouseUpArgs) => {
+        if (!dragStateRef.current || !onUpdateDrawing) return;
+        dragStateRef.current = null;
+        setIsDragging(false);
+    };
+
     const resetDrawingInteraction = () => {
+        dragStateRef.current = null;
+        hasMovedDuringDragRef.current = false;
+        setIsDragging(false);
         setDrawingStart(null);
         setDrawingPreviewEnd(null);
     };
@@ -203,6 +277,8 @@ export function useChartDrawingInteractions() {
         deleteModal,
         closeDeleteModal,
         handleOverlayClick,
+        handleOverlayMouseDown,
+        handleOverlayMouseUp,
         getOverlayCursor,
         handleDrawingPreviewMove,
         resetDrawingInteraction,
