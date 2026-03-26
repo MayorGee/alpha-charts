@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Header } from './components/layout/Header';
 import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
@@ -30,6 +30,8 @@ function App() {
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
     const [indicatorDialogOpen, setIndicatorDialogOpen] = useState(false);
     const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const toastTimeoutRef = useRef<number | null>(null);
 
     const { candles, loading, error, isLive } = useBinanceData(
         selectedSymbol.symbol,
@@ -44,15 +46,28 @@ function App() {
         separatePaneCount: separateIndicators.length,
     });
 
+    const showToast = (message: string, durationMs = 2200) => {
+        setToastMessage(message);
+        if (toastTimeoutRef.current !== null) {
+            window.clearTimeout(toastTimeoutRef.current);
+        }
+        toastTimeoutRef.current = window.setTimeout(() => {
+            setToastMessage(null);
+            toastTimeoutRef.current = null;
+        }, durationMs);
+    };
+
     const handleSearch = (query: string) => {
-        console.log('Searching:', query);
+        const trimmed = query.trim();
+        if (!trimmed) return;
+        showToast(`Search for "${trimmed}" is not implemented yet.`);
     };
 
     const handleAddIndicator = (indicator: Indicator) => {
         if (!activeIndicators.some((i) => i.id === indicator.id)) {
             setActiveIndicators([...activeIndicators, indicator]);
         } else {
-            alert('Indicator already added!');
+            showToast(`${indicator.name} is already added.`);
         }
     };
 
@@ -75,6 +90,11 @@ function App() {
 
     return (
         <div className="app">
+            {toastMessage && (
+                <div className="app-toast" role="status" aria-live="polite">
+                    {toastMessage}
+                </div>
+            )}
             <Header
                 symbol={selectedSymbol}
                 onSymbolSearch={handleSearch}

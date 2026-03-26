@@ -9,6 +9,21 @@
     background: $color-bg-primary;
 }
 
+.app-toast {
+    position: fixed;
+    top: $spacing-md;
+    right: $spacing-md;
+    max-width: 320px;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    background: $color-bg-secondary;
+    color: $color-text-primary;
+    font-size: $font-size-sm;
+    z-index: $z-index-tooltip;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
 .app-main {
     display: flex;
     flex: 1;
