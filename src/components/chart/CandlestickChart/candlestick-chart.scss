@@ -100,4 +100,48 @@
             }
         }
     }
+
+    .drawing-delete-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        z-index: $z-index-modal;
+    }
+
+    .drawing-delete-modal {
+        position: fixed;
+        min-width: 180px;
+        background: $color-bg-secondary;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-sm;
+        padding: $spacing-sm;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        transform: translate(8px, 8px);
+    }
+
+    .drawing-delete-modal__title {
+        margin: 0 0 $spacing-sm 0;
+        color: $color-text-primary;
+        font-size: $font-size-sm;
+    }
+
+    .drawing-delete-modal__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: $spacing-xs;
+    }
+
+    .drawing-delete-modal__button {
+        border: 1px solid $color-border;
+        border-radius: $border-radius-sm;
+        background: $color-bg-tertiary;
+        color: $color-text-primary;
+        font-size: $font-size-xs;
+        padding: $spacing-xs $spacing-sm;
+        cursor: pointer;
+    }
+
+    .drawing-delete-modal__button--delete {
+        border-color: #ef5350;
+        color: #ef5350;
+    }
 }

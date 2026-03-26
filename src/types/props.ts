@@ -57,6 +57,7 @@ export interface CandlestickChartProps {
     indicators?: MainChartIndicator[];
     drawings?: Drawing[];
     onAddDrawing?: (drawing: Omit<Drawing, 'id' | 'createdAt'>) => void;
+    onDeleteDrawing?: (id: string) => void;
     activeTool?: DrawingTool;
 }
 

@@ -14,6 +14,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     indicators,
     drawings,
     onAddDrawing,
+    onDeleteDrawing,
     activeTool
 }) => {
     const svgRef = useRef<SVGSVGElement>(null);
@@ -22,6 +23,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
     const [drawingStart, setDrawingStart] = useState<Point | null>(null);
     const [drawingPreviewEnd, setDrawingPreviewEnd] = useState<Point | null>(null);
+    const [deleteModal, setDeleteModal] = useState<{ drawingId: string; x: number; y: number } | null>(null);
     
     useEffect(() => {
          if (!svgRef.current || data.length === 0 || width <= 0 || height <= 0 || isNaN(width) || isNaN(height)) {
@@ -52,6 +54,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 d3.max(data, (d) => d.high)! * 1.001,
             ])
             .range([chartHeight, 0]);
+        const firstTime = data[0]?.time.getTime();
+        const lastTime = data[data.length - 1]?.time.getTime();
+        const minPrice = d3.min(data, (d) => d.low);
+        const maxPrice = d3.max(data, (d) => d.high);
 
         // Grid
         if (showGrid) {
@@ -230,23 +236,40 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
         // After drawing candles and indicators, draw existing drawings
         if (drawings && drawings.length > 0) {
-            drawings.forEach(drawing => {
-                if (drawing.type === 'trendline' && drawing.points.length === 2) {
-                    const [p1, p2] = drawing.points;
-                    g.append('line')
-                        .attr('x1', xScale(new Date(p1.x)))
-                        .attr('y1', yScale(p1.y))
-                        .attr('x2', xScale(new Date(p2.x)))
-                        .attr('y2', yScale(p2.y))
-                        .attr('stroke', drawing.color || '#FDD835')
-                        .attr('stroke-width', 2)
-                        .attr('stroke-dasharray', 'none');
+            drawings.forEach((drawing) => {
+                if (drawing.points.length !== 2) return;
+
+                const [p1, p2] = drawing.points;
+                switch (drawing.type) {
+                    case 'trendline':
+                    case 'horizontal':
+                    case 'vertical':
+                        g.append('line')
+                            .attr('x1', xScale(new Date(p1.x)))
+                            .attr('y1', yScale(p1.y))
+                            .attr('x2', xScale(new Date(p2.x)))
+                            .attr('y2', yScale(p2.y))
+                            .attr('stroke', drawing.color || '#FDD835')
+                            .attr('stroke-width', 2)
+                            .attr('stroke-dasharray', 'none')
+                            .style('cursor', 'pointer')
+                            .on('click', (event: MouseEvent) => {
+                                event.stopPropagation();
+                                setDeleteModal({
+                                    drawingId: drawing.id,
+                                    x: event.clientX,
+                                    y: event.clientY,
+                                });
+                            });
+                        break;
+                    default:
+                        break;
                 }
             });
         }
 
         // Draw pending preview
-        if (drawingStart && drawingPreviewEnd) {
+        if (activeTool === 'trendline' && drawingStart && drawingPreviewEnd) {
             const { start, end } = { start: drawingStart, end: drawingPreviewEnd };
             
             g.append('line')
@@ -275,11 +298,74 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             return { x: x.getTime(), y };
         };
 
+        const pointToSegmentDistance = (
+            point: { x: number; y: number },
+            segmentStart: { x: number; y: number },
+            segmentEnd: { x: number; y: number },
+        ) => {
+            const dx = segmentEnd.x - segmentStart.x;
+            const dy = segmentEnd.y - segmentStart.y;
+            if (dx === 0 && dy === 0) {
+                return Math.hypot(point.x - segmentStart.x, point.y - segmentStart.y);
+            }
+
+            const t = Math.max(
+                0,
+                Math.min(
+                    1,
+                    ((point.x - segmentStart.x) * dx + (point.y - segmentStart.y) * dy) /
+                        (dx * dx + dy * dy),
+                ),
+            );
+
+            const projX = segmentStart.x + t * dx;
+            const projY = segmentStart.y + t * dy;
+            return Math.hypot(point.x - projX, point.y - projY);
+        };
+
+        const findClickedDrawingId = (mouseX: number, mouseY: number) => {
+            if (!drawings || drawings.length === 0) return null;
+
+            const clickPoint = { x: mouseX, y: mouseY };
+            const hitTolerancePx = 6;
+
+            for (let i = drawings.length - 1; i >= 0; i -= 1) {
+                const drawing = drawings[i];
+                if (drawing.points.length !== 2) continue;
+                if (
+                    drawing.type !== 'trendline' &&
+                    drawing.type !== 'horizontal' &&
+                    drawing.type !== 'vertical'
+                ) {
+                    continue;
+                }
+
+                const [p1, p2] = drawing.points;
+                const start = { x: xScale(new Date(p1.x)), y: yScale(p1.y) };
+                const end = { x: xScale(new Date(p2.x)), y: yScale(p2.y) };
+                const distance = pointToSegmentDistance(clickPoint, start, end);
+                if (distance <= hitTolerancePx) return drawing.id;
+            }
+
+            return null;
+        };
+
         overlay
             .on('click', function(event) {
-                if (!activeTool || activeTool === 'none' || !onAddDrawing) return;
-                
                 const [mouseX, mouseY] = d3.pointer(event);
+                const clickedDrawingId = findClickedDrawingId(mouseX, mouseY);
+                if (clickedDrawingId) {
+                    setDeleteModal({
+                        drawingId: clickedDrawingId,
+                        x: event.clientX,
+                        y: event.clientY,
+                    });
+                    return;
+                }
+
+                setDeleteModal(null);
+                if (!activeTool || activeTool === 'none' || !onAddDrawing) return;
+
                 const point = screenToDomain(mouseX, mouseY);
 
                 if (activeTool === 'trendline') {
@@ -295,10 +381,37 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                         setDrawingStart(null);
                         setDrawingPreviewEnd(null);
                     }
+                } else if (activeTool === 'horizontal' && firstTime !== undefined && lastTime !== undefined) {
+                    onAddDrawing({
+                        type: 'horizontal',
+                        points: [
+                            { x: firstTime, y: point.y },
+                            { x: lastTime, y: point.y },
+                        ],
+                        color: '#FFFFFF',
+                    });
+                } else if (activeTool === 'vertical' && minPrice !== undefined && maxPrice !== undefined) {
+                    onAddDrawing({
+                        type: 'vertical',
+                        points: [
+                            { x: point.x, y: minPrice },
+                            { x: point.x, y: maxPrice },
+                        ],
+                        color: '#FFFFFF',
+                    });
                 }
             })
             .on('mousemove', function (event) {
                 const [mouseX, mouseY] = d3.pointer(event);
+                const hoveredDrawingId = findClickedDrawingId(mouseX, mouseY);
+                d3.select(this).style(
+                    'cursor',
+                    hoveredDrawingId
+                        ? 'pointer'
+                        : activeTool && activeTool !== 'none'
+                            ? 'crosshair'
+                            : 'default',
+                );
 
                 if (activeTool && activeTool !== 'none') {
                     if (drawingStart) {
@@ -318,12 +431,19 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 }
             })
             .on('mouseleave', () => {
+                overlay.style('cursor', 'default');
                 setCrosshair(null);
                 setTooltip(null);
                 setDrawingStart(null);
                 setDrawingPreviewEnd(null);
             });
     }, [data, width, height, showGrid, chartStyle, indicators, activeTool, drawings, onAddDrawing, drawingStart, drawingPreviewEnd]);
+
+    const handleDeleteDrawing = () => {
+        if (!deleteModal || !onDeleteDrawing) return;
+        onDeleteDrawing(deleteModal.drawingId);
+        setDeleteModal(null);
+    };
 
     return (
         <div className="candlestick-chart-container">
@@ -380,6 +500,34 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     <div className="chart-tooltip__row chart-tooltip__volume">
                         <span>Volume:</span>
                         <span>{(tooltip.candle.volume / 1000000).toFixed(2)}M</span>
+                    </div>
+                </div>
+            )}
+
+            {deleteModal && (
+                <div className="drawing-delete-modal__backdrop" onClick={() => setDeleteModal(null)}>
+                    <div
+                        className="drawing-delete-modal"
+                        style={{ left: deleteModal.x, top: deleteModal.y }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <p className="drawing-delete-modal__title">Delete drawing?</p>
+                        <div className="drawing-delete-modal__actions">
+                            <button
+                                type="button"
+                                className="drawing-delete-modal__button drawing-delete-modal__button--delete"
+                                onClick={handleDeleteDrawing}
+                            >
+                                Delete
+                            </button>
+                            <button
+                                type="button"
+                                className="drawing-delete-modal__button drawing-delete-modal__button--cancel"
+                                onClick={() => setDeleteModal(null)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

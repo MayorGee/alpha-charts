@@ -69,6 +69,7 @@ function App() {
         setActiveTool,
         drawings,
         addDrawing,
+        deleteDrawing,
         clearDrawings,
     } = useDrawing();
 
@@ -117,6 +118,7 @@ function App() {
                                 indicators={mainIndicators}
                                 drawings={drawings}
                                 onAddDrawing={addDrawing}
+                                onDeleteDrawing={deleteDrawing}
                                 activeTool={activeTool}
                             />
                             <VolumeChart
