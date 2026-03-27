@@ -52,14 +52,14 @@ Optional **Vite** variables (prefix `VITE_`, read at build time). Create a `.env
 
 | Variable                 | Purpose                                                                 |
 |--------------------------|-------------------------------------------------------------------------|
-| `VITE_BINANCE_REST_URL`  | Base URL for REST klines. If unset, requests use `/api/v3/klines` on the dev origin (see proxy below). |
+| `VITE_BINANCE_REST_URL`  | Base URL for Binance REST. Defaults to `https://api.binance.com/api/v3` when unset. |
 | `VITE_BINANCE_WS_URL`    | WebSocket base URL. Defaults to `wss://stream.binance.com:9443/ws`.     |
 
 Implementation: `src/lib/Environment.ts`.
 
 ### Dev server proxy
 
-In development, **without** `VITE_BINANCE_REST_URL`, kline fetches go to `http://localhost:5173/api/v3/klines`, which Vite proxies to `https://api.binance.com` (see `vite.config.ts`). That avoids browser CORS issues for the REST call.
+The Vite `/api` proxy in `vite.config.ts` is optional convenience for local development. Production builds should point directly to Binance REST (the default fallback does this automatically).
 
 WebSocket connections use the configured `wss://` URL directly from the browser.
 
