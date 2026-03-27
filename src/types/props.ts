@@ -2,12 +2,14 @@ import type { MACDResult } from '../lib/indicators/macd';
 import type { Drawing } from './drawing';
 import type {
     Candle,
+    ChartColorsConfig,
     ChartStyle,
     DrawingTool,
     Indicator,
     IndicatorId,
     MainChartIndicator,
     Symbol,
+    UserPreferences,
 } from './index';
 
 export interface HeaderProps {
@@ -16,6 +18,7 @@ export interface HeaderProps {
     onSymbolSearch: (query: string) => void;
     searchResults: Symbol[];
     onSelectSearchResult: (symbol: Symbol) => void;
+    onClearSearch: () => void;
     isConnected: boolean;
 }
 
@@ -28,6 +31,7 @@ export interface ToolbarProps {
     onGridToggle: () => void;
     showTooltip: boolean;
     onTooltipToggle: () => void;
+    onOpenSettings: () => void;
     onAddIndicator: () => void;
     onClearDrawings: () => void;
     activeIndicators?: Indicator[];           
@@ -60,6 +64,7 @@ export interface CandlestickChartProps {
     height: number;
     showGrid: boolean;
     showTooltip: boolean;
+    chartColors: ChartColorsConfig;
     chartStyle: ChartStyle;
     indicators?: MainChartIndicator[];
     drawings?: Drawing[];
@@ -71,14 +76,24 @@ export interface CandlestickChartProps {
     activeTool?: DrawingTool;
 }
 
+export interface SettingsPanelProps {
+    isOpen: boolean;
+    preferences: UserPreferences;
+    defaultPreferences: UserPreferences;
+    onClose: () => void;
+    onSave: (next: UserPreferences) => void;
+}
+
 export interface VolumeChartProps {
     data: Candle[];
     width: number;
     height: number;
+    chartColors?: ChartColorsConfig;
 }
 
 export interface IndicatorDialogProps {
     isOpen: boolean;
+    periods: UserPreferences['indicatorPeriods'];
     onClose: () => void;
     onAddIndicator: (indicator: Indicator) => void;
 }

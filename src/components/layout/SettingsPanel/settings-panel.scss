@@ -1,0 +1,163 @@
+@use '../../../scss/abstracts' as *;
+
+.settings-panel__backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: $z-index-modal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-panel {
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    padding: $spacing-md;
+    color: $color-text-primary;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
+
+.settings-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $spacing-md;
+}
+
+.settings-panel__close {
+    color: $color-text-secondary;
+    padding: $spacing-xs;
+    border-radius: $border-radius-sm;
+
+    &:hover {
+        background: $color-bg-tertiary;
+        color: $color-text-primary;
+    }
+}
+
+.settings-panel__section {
+    margin-bottom: $spacing-md;
+
+    h4 {
+        margin: 0 0 $spacing-sm 0;
+        font-size: $font-size-md;
+    }
+
+    label {
+        color: $color-text-secondary;
+        font-size: $font-size-sm;
+    }
+
+    input,
+    select {
+        background: $color-bg-primary;
+        border: 1px solid $color-border;
+        color: $color-text-primary;
+        border-radius: $border-radius-sm;
+        height: 34px;
+        padding: 0 $spacing-sm;
+    }
+}
+
+.settings-panel__grid {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: $spacing-sm;
+    align-items: center;
+}
+
+.settings-panel__inline-field {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+
+    label {
+        min-width: 100px;
+    }
+
+    select {
+        width: 80px;
+    }
+}
+
+.settings-panel__spinner {
+    position: relative;
+    display: inline-block;
+    width: 120px;
+}
+
+.settings-panel__spinner input[type='number'] {
+    width: 100%;
+    padding-right: 26px;
+    appearance: textfield;
+}
+
+.settings-panel__spinner input[type='number']::-webkit-outer-spin-button,
+.settings-panel__spinner input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.settings-panel__spinner-controls {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    width: 22px;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    border-left: 1px solid $color-border;
+    overflow: hidden;
+    border-top-right-radius: $border-radius-sm;
+    border-bottom-right-radius: $border-radius-sm;
+}
+
+.settings-panel__spinner-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: $color-bg-tertiary;
+    color: $color-text-secondary;
+
+    &:hover {
+        background: $color-bg-primary;
+        color: $color-text-primary;
+    }
+
+    svg {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+.settings-panel__spinner-btn--up {
+    border-bottom: 1px solid $color-border;
+}
+
+.settings-panel__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+}
+
+.settings-panel__btn {
+    border-radius: $border-radius-sm;
+    padding: $spacing-xs $spacing-md;
+    border: 1px solid $color-border;
+}
+
+.settings-panel__btn--ghost {
+    background: $color-bg-primary;
+    color: $color-text-primary;
+}
+
+.settings-panel__btn--primary {
+    background: $color-accent;
+    border-color: $color-accent;
+    color: $color-white;
+}

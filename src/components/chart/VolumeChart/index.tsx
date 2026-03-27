@@ -3,7 +3,12 @@ import * as d3 from 'd3';
 import type { VolumeChartProps } from '../../../types/props';
 import './volume-chart.scss';
 
-export const VolumeChart: React.FC<VolumeChartProps> = ({ data, width, height }) => {
+export const VolumeChart: React.FC<VolumeChartProps> = ({
+    data,
+    width,
+    height,
+    chartColors = { bullish: '#26A69A', bearish: '#EF5350', line: '#42A5F5', grid: '#2F3A48' },
+}) => {
     const svgRef = useRef<SVGSVGElement>(null);
 
     useEffect(() => {
@@ -43,7 +48,7 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data, width, height })
             .attr('y', (d) => yScale(d.volume))
             .attr('width', barWidth)
             .attr('height', (d) => chartHeight - yScale(d.volume))
-            .attr('fill', (d) => (d.close >= d.open ? '#26A69A' : '#EF5350'))
+            .attr('fill', (d) => (d.close >= d.open ? chartColors.bullish : chartColors.bearish))
             .attr('opacity', 0.6);
 
         // Volume axis

@@ -101,6 +101,21 @@
         }
     }
 
+    .chart-history-hint {
+        position: absolute;
+        top: $spacing-sm;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: $spacing-xs $spacing-sm;
+        border: 1px solid $color-border;
+        border-radius: 999px;
+        background: rgba(19, 23, 34, 0.88);
+        color: $color-text-secondary;
+        font-size: $font-size-xs;
+        pointer-events: none;
+        z-index: $z-index-tooltip;
+    }
+
     .drawing-delete-modal__backdrop {
         position: absolute;
         inset: 0;

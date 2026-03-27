@@ -38,6 +38,7 @@ export function Toolbar({
     onGridToggle,
     showTooltip,
     onTooltipToggle,
+    onOpenSettings,
     onAddIndicator,
     onClearDrawings,
     activeIndicators = [],
@@ -145,7 +146,7 @@ export function Toolbar({
                 <button
                     className="toolbar__button"
                     title="Settings"
-                    // onClick will be added later
+                    onClick={onOpenSettings}
                 >
                     <Settings />
                 </button>

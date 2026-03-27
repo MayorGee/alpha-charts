@@ -11,6 +11,7 @@ export const CandlestickChart = memo(({
     height,
     showGrid,
     showTooltip,
+    chartColors,
     chartStyle,
     indicators,
     drawings,
@@ -35,6 +36,7 @@ export const CandlestickChart = memo(({
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
     const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(null);
     const [zoomTransform, setZoomTransform] = useState(d3.zoomIdentity);
+    const zoomTransformRef = useRef(zoomTransform);
     const [isPanning, setIsPanning] = useState(false);
     const {
         drawingStart,
@@ -57,6 +59,10 @@ export const CandlestickChart = memo(({
             setTooltip(null);
         }
     }, [showTooltip]);
+
+    useEffect(() => {
+        zoomTransformRef.current = zoomTransform;
+    }, [zoomTransform]);
     
     useEffect(() => {
          if (!svgRef.current || data.length === 0 || width <= 0 || height <= 0 || isNaN(width) || isNaN(height)) {
@@ -73,6 +79,19 @@ export const CandlestickChart = memo(({
         const g = svg
             .append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const clipId = 'candlestick-plot-clip';
+        g.append('defs')
+            .append('clipPath')
+            .attr('clipPathUnits', 'userSpaceOnUse')
+            .attr('id', clipId)
+            .append('rect')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', Math.max(0, chartWidth - 1))
+            .attr('height', Math.max(0, chartHeight - 1));
+
+        const plot = g.append('g').attr('clip-path', `url(#${clipId})`);
 
         // Scales
         const baseXScale = d3
@@ -97,7 +116,7 @@ export const CandlestickChart = memo(({
         // Grid
         if (showGrid) {
             // Vertical grid lines
-            g.append('g')
+            plot.append('g')
                 .attr('class', 'grid')
                 .selectAll('line')
                 .data(xScale.ticks(10))
@@ -106,11 +125,11 @@ export const CandlestickChart = memo(({
                 .attr('x2', (d) => xScale(d))
                 .attr('y1', 0)
                 .attr('y2', chartHeight)
-                .attr('stroke', '#2F3A48')
+                .attr('stroke', chartColors.grid)
                 .attr('stroke-width', 1);
 
             // Horizontal grid lines
-            g.append('g')
+            plot.append('g')
                 .attr('class', 'grid')
                 .selectAll('line')
                 .data(yScale.ticks(8))
@@ -119,7 +138,7 @@ export const CandlestickChart = memo(({
                 .attr('x2', chartWidth)
                 .attr('y1', (d) => yScale(d))
                 .attr('y2', (d) => yScale(d))
-                .attr('stroke', '#2F3A48')
+                .attr('stroke', chartColors.grid)
                 .attr('stroke-width', 1);
         }
 
@@ -132,7 +151,7 @@ export const CandlestickChart = memo(({
             const candleWidth = Math.max(1, Math.min(xSpacing - 2, 20));
 
             // Draw candlesticks
-            const candles = g
+            const candles = plot
                 .selectAll('.candle')
                 .data(data)
                 .join('g')
@@ -146,7 +165,7 @@ export const CandlestickChart = memo(({
                 .attr('x2', 0)
                 .attr('y1', (d) => yScale(d.high))
                 .attr('y2', (d) => yScale(d.low))
-                .attr('stroke', (d) => (d.close >= d.open ? '#26A69A' : '#EF5350'))
+                .attr('stroke', (d) => (d.close >= d.open ? chartColors.bullish : chartColors.bearish))
                 .attr('stroke-width', 1);
 
             // Bodies
@@ -159,7 +178,7 @@ export const CandlestickChart = memo(({
                     const h = Math.abs(yScale(d.open) - yScale(d.close));
                     return h === 0 ? 1 : h;
                 })
-                .attr('fill', (d) => (d.close >= d.open ? '#26A69A' : '#EF5350'));
+                .attr('fill', (d) => (d.close >= d.open ? chartColors.bullish : chartColors.bearish));
         } else {
             // Line chart
             const line = d3
@@ -168,10 +187,10 @@ export const CandlestickChart = memo(({
                 .y((d) => yScale(d.close))
                 .curve(d3.curveMonotoneX);
 
-            g.append('path')
+            plot.append('path')
                 .datum(data)
                 .attr('fill', 'none')
-                .attr('stroke', '#42A5F5')
+                .attr('stroke', chartColors.line)
                 .attr('stroke-width', 2)
                 .attr('d', line);
 
@@ -183,9 +202,9 @@ export const CandlestickChart = memo(({
                 .y1((d) => yScale(d.close))
                 .curve(d3.curveMonotoneX);
 
-            g.append('path')
+            plot.append('path')
                 .datum(data)
-                .attr('fill', '#42A5F5')
+                .attr('fill', chartColors.line)
                 .attr('fill-opacity', 0.1)
                 .attr('d', area);
         }
@@ -205,20 +224,20 @@ export const CandlestickChart = memo(({
                 switch (ind.id) {
                     case 'bollinger': {
                         const bands = ind.data;
-                        g.append('path')
+                        plot.append('path')
                             .datum(bands.upper)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
                             .attr('stroke-width', 1.5)
                             .attr('opacity', 0.7)
                             .attr('d', line);
-                        g.append('path')
+                        plot.append('path')
                             .datum(bands.middle)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
                             .attr('stroke-width', 2)
                             .attr('d', line);
-                        g.append('path')
+                        plot.append('path')
                             .datum(bands.lower)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
@@ -229,7 +248,7 @@ export const CandlestickChart = memo(({
                     }
                     case 'sma':
                     case 'ema':
-                        g.append('path')
+                        plot.append('path')
                             .datum(ind.data)
                             .attr('fill', 'none')
                             .attr('stroke', ind.color)
@@ -283,7 +302,7 @@ export const CandlestickChart = memo(({
                     case 'trendline':
                     case 'horizontal':
                     case 'vertical':
-                        g.append('line')
+                        plot.append('line')
                             .attr('x1', xScale(new Date(p1.x)))
                             .attr('y1', yScale(p1.y))
                             .attr('x2', xScale(new Date(p2.x)))
@@ -301,7 +320,7 @@ export const CandlestickChart = memo(({
 
                         fibLevelConfigs.forEach(({ value, color }) => {
                             const y = yScale(low + span * value);
-                            g.append('line')
+                            plot.append('line')
                                 .attr('x1', x1)
                                 .attr('y1', y)
                                 .attr('x2', x2)
@@ -310,7 +329,7 @@ export const CandlestickChart = memo(({
                                 .attr('stroke-width', value === 0.5 ? 1.8 : 1.2)
                                 .attr('opacity', 0.9);
 
-                            g.append('text')
+                            plot.append('text')
                                 .attr('x', Math.max(x1, x2) + 6)
                                 .attr('y', y + 3)
                                 .attr('fill', color)
@@ -319,14 +338,14 @@ export const CandlestickChart = memo(({
                                 .text(value.toFixed(3));
                         });
 
-                        g.append('circle')
+                        plot.append('circle')
                             .attr('cx', x1)
                             .attr('cy', yScale(p1.y))
                             .attr('r', 4)
                             .attr('fill', '#FFFFFF')
                             .attr('stroke', '#2A2F38')
                             .attr('stroke-width', 1.2);
-                        g.append('circle')
+                        plot.append('circle')
                             .attr('cx', x2)
                             .attr('cy', yScale(p2.y))
                             .attr('r', 4)
@@ -346,7 +365,7 @@ export const CandlestickChart = memo(({
             const { start, end } = { start: drawingStart, end: drawingPreviewEnd };
 
             if (activeTool === 'trendline') {
-                g.append('line')
+                plot.append('line')
                     .attr('x1', xScale(new Date(start.x)))
                     .attr('y1', yScale(start.y))
                     .attr('x2', xScale(new Date(end.x)))
@@ -363,7 +382,7 @@ export const CandlestickChart = memo(({
 
                 fibLevelConfigs.forEach(({ value, color }) => {
                     const y = yScale(low + span * value);
-                    g.append('line')
+                    plot.append('line')
                         .attr('x1', x1)
                         .attr('y1', y)
                         .attr('x2', x2)
@@ -481,6 +500,7 @@ export const CandlestickChart = memo(({
         showGrid,
         chartStyle,
         showTooltip,
+        chartColors,
         indicators,
         activeTool,
         drawings,
@@ -506,6 +526,18 @@ export const CandlestickChart = memo(({
         const svg = d3.select(svgRef.current);
         const margin = { top: 20, right: 80, bottom: 20, left: 10 };
         const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+
+        const clampTransform = (t: d3.ZoomTransform) => {
+            const minX = chartWidth - chartWidth * t.k;
+            const maxX = 0;
+            const clampedX = Math.max(minX, Math.min(maxX, t.x));
+            const yOverscroll = chartHeight * 0.25;
+            const minY = chartHeight - chartHeight * t.k - yOverscroll;
+            const maxY = yOverscroll;
+            const clampedY = Math.max(minY, Math.min(maxY, t.y));
+            return d3.zoomIdentity.translate(clampedX, clampedY).scale(t.k);
+        };
 
         const zoomBehavior = d3
             .zoom<SVGSVGElement, unknown>()
@@ -515,7 +547,7 @@ export const CandlestickChart = memo(({
             .filter((event) => {
                 if (activeTool && activeTool !== 'none') return false;
                 if (deleteModal) return false;
-                return event.type === 'wheel' || event.type === 'mousedown' || event.type === 'dblclick';
+                return event.type === 'mousedown' || event.type === 'dblclick';
             })
             .on('start', (event) => {
                 if (event.sourceEvent?.type === 'mousedown') {
@@ -523,16 +555,7 @@ export const CandlestickChart = memo(({
                 }
             })
             .on('zoom', (event) => {
-                const t = event.transform;
-                const minX = chartWidth - chartWidth * t.k;
-                const maxX = 0;
-                const clampedX = Math.max(minX, Math.min(maxX, t.x));
-                const chartHeight = height - margin.top - margin.bottom;
-                const yOverscroll = chartHeight * 0.25;
-                const minY = chartHeight - chartHeight * t.k - yOverscroll;
-                const maxY = yOverscroll;
-                const clampedY = Math.max(minY, Math.min(maxY, t.y));
-                const clampedTransform = d3.zoomIdentity.translate(clampedX, clampedY).scale(t.k);
+                const clampedTransform = clampTransform(event.transform);
 
                 setZoomTransform((prev) =>
                     prev.k === clampedTransform.k &&
@@ -546,10 +569,8 @@ export const CandlestickChart = memo(({
                 setIsPanning(false);
                 if (!onReachLeftEdge || isLoadingMoreHistory) return;
 
-                const t = event.transform;
-                const minX = chartWidth - chartWidth * t.k;
-                const maxX = 0;
-                const clampedX = Math.max(minX, Math.min(maxX, t.x));
+                const clampedX = clampTransform(event.transform).x;
+                const minX = chartWidth - chartWidth * event.transform.k;
                 const nearLeftEdge = clampedX <= minX + 1;
                 const now = performance.now();
 
@@ -561,8 +582,43 @@ export const CandlestickChart = memo(({
 
         svg.call(zoomBehavior);
 
+        const handleWheelPan = (event: WheelEvent) => {
+            if (activeTool && activeTool !== 'none') return;
+            if (deleteModal) return;
+            event.preventDefault();
+
+            const current = zoomTransformRef.current;
+            // Apply horizontal pan immediately on any horizontal wheel delta.
+            const pannedX = current.x - event.deltaX;
+
+            // Keep vertical wheel mapped to zoom, preserving cursor focal point.
+            const zoomIntensity = 0.0022;
+            const scaleFactor = Math.exp(-event.deltaY * zoomIntensity);
+            const unclampedK = current.k * scaleFactor;
+            const nextK = Math.max(1, Math.min(24, unclampedK));
+            const rect = svgRef.current?.getBoundingClientRect();
+            const px = rect ? event.clientX - rect.left : width / 2;
+            const py = rect ? event.clientY - rect.top : height / 2;
+            const kRatio = nextK / current.k;
+            const nextX = px - (px - pannedX) * kRatio;
+            const nextY = py - (py - current.y) * kRatio;
+
+            const next = clampTransform(
+                d3.zoomIdentity
+                    .translate(nextX, nextY)
+                    .scale(nextK),
+            );
+
+            setZoomTransform((prev) =>
+                prev.k === next.k && prev.x === next.x && prev.y === next.y ? prev : next,
+            );
+        };
+
+        svg.node()?.addEventListener('wheel', handleWheelPan, { passive: false });
+
         return () => {
             setIsPanning(false);
+            svg.node()?.removeEventListener('wheel', handleWheelPan as EventListener);
             svg.on('.zoom', null);
         };
     }, [activeTool, deleteModal, width, height, onReachLeftEdge, isLoadingMoreHistory]);
@@ -570,6 +626,7 @@ export const CandlestickChart = memo(({
     return (
         <div className="candlestick-chart-container">
             <svg ref={svgRef} width={width} height={height} className="candlestick-chart-svg" />
+            {isLoadingMoreHistory && <div className="chart-history-hint">Loading older candles...</div>}
 
             {/* Crosshair */}
             {crosshair && (

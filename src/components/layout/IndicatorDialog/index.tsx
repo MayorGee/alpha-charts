@@ -3,45 +3,46 @@ import type { Indicator } from '../../../types';
 import type { IndicatorDialogProps } from '../../../types/props';
 import './indicator-dialog.scss';
 
-const availableIndicators: Indicator[] = [
-    {
-        id: 'sma',
-        name: 'SMA (Simple Moving Average)',
-        description: 'Period: 20',
-        color: '#FDD835',
-    },
-    {
-        id: 'ema',
-        name: 'EMA (Exponential Moving Average)',
-        description: 'Period: 12',
-        color: '#42A5F5',
-    },
-    {
-        id: 'rsi',
-        name: 'RSI (Relative Strength Index)',
-        description: 'Period: 14',
-        color: '#AB47BC',
-    },
-    {
-        id: 'macd',
-        name: 'MACD',
-        description: 'Fast: 12, Slow: 26, Signal: 9',
-        color: '#26A69A',
-    },
-    {
-        id: 'bollinger',
-        name: 'Bollinger Bands',
-        description: 'Period: 20, Std Dev: 2',
-        color: '#2962FF',
-    },
-];
-
 export const IndicatorDialog: React.FC<IndicatorDialogProps> = ({
     isOpen,
+    periods,
     onClose,
     onAddIndicator,
 }) => {
     if (!isOpen) return null;
+
+    const availableIndicators: Indicator[] = [
+        {
+            id: 'sma',
+            name: 'SMA (Simple Moving Average)',
+            description: `Period: ${periods.sma}`,
+            color: '#FDD835',
+        },
+        {
+            id: 'ema',
+            name: 'EMA (Exponential Moving Average)',
+            description: `Period: ${periods.ema}`,
+            color: '#42A5F5',
+        },
+        {
+            id: 'rsi',
+            name: 'RSI (Relative Strength Index)',
+            description: `Period: ${periods.rsi}`,
+            color: '#AB47BC',
+        },
+        {
+            id: 'macd',
+            name: 'MACD',
+            description: `Fast: ${periods.macdFast}, Slow: ${periods.macdSlow}, Signal: ${periods.macdSignal}`,
+            color: '#26A69A',
+        },
+        {
+            id: 'bollinger',
+            name: 'Bollinger Bands',
+            description: `Period: ${periods.bollingerPeriod}, Std Dev: ${periods.bollingerStdDev}`,
+            color: '#2962FF',
+        },
+    ];
 
     const handleOverlayClick = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) {

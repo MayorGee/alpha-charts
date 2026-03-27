@@ -3,6 +3,8 @@ import { type Candle } from '../types';
 import { fetchKlines } from '../lib/api/binanceRest';
 import { binanceWs } from '../lib/websocket/binanceWs';
 
+const MAX_HISTORY_CANDLES = 5000;
+
 export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
     const [candles, setCandles] = useState<Candle[]>([]);
     const [loading, setLoading] = useState(true);
@@ -20,9 +22,9 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
         fetchKlines(symbol, timeframe, limit)
             .then((data) => {
                 if (mounted) {
-                    setCandles(data);
+                    setCandles(data.slice(-MAX_HISTORY_CANDLES));
                     setLoading(false);
-                    setHasMoreHistory(true);
+                    setHasMoreHistory(data.length >= limit && data.length < MAX_HISTORY_CANDLES);
                 }
             })
             .catch((err) => {
@@ -39,6 +41,10 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
 
     const loadOlderHistory = useCallback(async () => {
         if (loading || loadingMoreHistory || !hasMoreHistory || candles.length === 0) return;
+        if (candles.length >= MAX_HISTORY_CANDLES) {
+            setHasMoreHistory(false);
+            return;
+        }
         setLoadingMoreHistory(true);
         try {
             const oldest = candles[0].time.getTime();
@@ -51,10 +57,11 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
             setCandles((prev) => {
                 const existing = new Set(prev.map((c) => c.time.getTime()));
                 const uniqueOlder = older.filter((c) => !existing.has(c.time.getTime()));
-                return [...uniqueOlder, ...prev];
+                const merged = [...uniqueOlder, ...prev];
+                return merged.slice(-MAX_HISTORY_CANDLES);
             });
 
-            if (older.length < limit) {
+            if (older.length < limit || candles.length >= MAX_HISTORY_CANDLES) {
                 setHasMoreHistory(false);
             }
         } catch {
@@ -78,7 +85,9 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
                 } else {
                     // New candle – append (keep history for left backfill scroll)
                     const updated = [...prev, newCandle];
-                    return updated;
+                    return updated.length > MAX_HISTORY_CANDLES
+                        ? updated.slice(updated.length - MAX_HISTORY_CANDLES)
+                        : updated;
                 }
             });
         };

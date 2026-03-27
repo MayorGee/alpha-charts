@@ -1,4 +1,5 @@
 import { Search, Wifi } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import type { HeaderProps } from '../../../types/props';
 import './header.scss';
 
@@ -8,17 +9,39 @@ export function Header({
     onSymbolSearch,
     searchResults,
     onSelectSearchResult,
+    onClearSearch,
     isConnected,
 }: HeaderProps) {
     const safeChange24h = Number.isFinite(symbol.change24h) ? symbol.change24h : 0;
     const changeClass = safeChange24h >= 0 ? 'header__stats-value--positive' : 'header__stats-value--negative';
     const changeSign = safeChange24h >= 0 ? '+' : '';
     const shouldShowResults = searchQuery.trim().length > 0;
+    const searchRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleDocumentClick = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (!searchRef.current?.contains(target)) {
+                onClearSearch();
+            }
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClearSearch();
+        };
+
+        document.addEventListener('mousedown', handleDocumentClick);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', handleDocumentClick);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [onClearSearch]);
 
     return (
         <header className="header">
             {/* Symbol Search */}
-            <div className="header__search">
+            <div className="header__search" ref={searchRef}>
                 <Search className="header__search-icon" />
                 <input
                     type="text"

@@ -7,12 +7,17 @@ import { calculateMACD } from '../lib/indicators/macd';
 import {
     type Candle,
     type Indicator,
+    type IndicatorPeriodsConfig,
     type IndicatorResult,
     isMainChartIndicator,
     isSeparateChartIndicator,
 } from '../types';
 
-export function useIndicatorResults(candles: Candle[], activeIndicators: Indicator[]) {
+export function useIndicatorResults(
+    candles: Candle[],
+    activeIndicators: Indicator[],
+    periods: IndicatorPeriodsConfig,
+) {
     const indicatorResults = useMemo((): IndicatorResult[] => {
         if (!candles.length) return [];
 
@@ -24,7 +29,7 @@ export function useIndicatorResults(candles: Candle[], activeIndicators: Indicat
                             id: 'sma',
                             pane: 'main',
                             color: ind.color,
-                            data: calculateSMA(candles, 20),
+                            data: calculateSMA(candles, periods.sma),
                         },
                     ];
                 case 'ema':
@@ -33,7 +38,7 @@ export function useIndicatorResults(candles: Candle[], activeIndicators: Indicat
                             id: 'ema',
                             pane: 'main',
                             color: ind.color,
-                            data: calculateEMA(candles, 12),
+                            data: calculateEMA(candles, periods.ema),
                         },
                     ];
                 case 'rsi':
@@ -42,11 +47,15 @@ export function useIndicatorResults(candles: Candle[], activeIndicators: Indicat
                             id: 'rsi',
                             pane: 'separate',
                             color: ind.color,
-                            data: calculateRSI(candles, 14),
+                            data: calculateRSI(candles, periods.rsi),
                         },
                     ];
                 case 'bollinger': {
-                    const bands = calculateBollingerBands(candles, 20, 2);
+                    const bands = calculateBollingerBands(
+                        candles,
+                        periods.bollingerPeriod,
+                        periods.bollingerStdDev,
+                    );
                     return [
                         {
                             id: 'bollinger',
@@ -62,7 +71,12 @@ export function useIndicatorResults(candles: Candle[], activeIndicators: Indicat
                             id: 'macd',
                             pane: 'separate',
                             color: ind.color,
-                            data: calculateMACD(candles, 12, 26, 9),
+                            data: calculateMACD(
+                                candles,
+                                periods.macdFast,
+                                periods.macdSlow,
+                                periods.macdSignal,
+                            ),
                         },
                     ];
                 default: {
@@ -71,7 +85,7 @@ export function useIndicatorResults(candles: Candle[], activeIndicators: Indicat
                 }
             }
         });
-    }, [candles, activeIndicators]);
+    }, [candles, activeIndicators, periods]);
 
     const mainIndicators = useMemo(
         () => indicatorResults.filter(isMainChartIndicator),

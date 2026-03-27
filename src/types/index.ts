@@ -33,6 +33,33 @@ export interface Timeframe {
     minutes: number; // duration in minutes for calculations
 }
 
+export type ThemeMode = 'dark' | 'light';
+
+export interface IndicatorPeriodsConfig {
+    sma: number;
+    ema: number;
+    rsi: number;
+    bollingerPeriod: number;
+    bollingerStdDev: number;
+    macdFast: number;
+    macdSlow: number;
+    macdSignal: number;
+}
+
+export interface ChartColorsConfig {
+    bullish: string;
+    bearish: string;
+    line: string;
+    grid: string;
+}
+
+export interface UserPreferences {
+    defaultTimeframe: string;
+    theme: ThemeMode;
+    indicatorPeriods: IndicatorPeriodsConfig;
+    chartColors: ChartColorsConfig;
+}
+
 export type DrawingTool = 'trendline' | 'horizontal' | 'vertical' | 'fibonacci' | 'none';
 export type ChartStyle = 'candlestick' | 'line';
 

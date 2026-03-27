@@ -5,6 +5,7 @@ import { Watchlist } from './components/layout/Watchlist';
 import { OrderPanel } from './components/layout/OrderPanel';
 import { TimeframeSelector } from './components/layout/TimeframeSelector';
 import { IndicatorDialog } from './components/layout/IndicatorDialog';
+import { SettingsPanel } from './components/layout/SettingsPanel';
 import { CandlestickChart } from './components/chart/CandlestickChart';
 import { VolumeChart } from './components/chart/VolumeChart';
 import { IndicatorPane } from './components/chart/IndicatorPane';
@@ -21,9 +22,75 @@ import {
     INDICATOR_PANE_HEIGHT,
     MACD_PANE_COLORS,
 } from './constants/chartLayout';
-import type { ChartStyle, Symbol, Indicator, IndicatorId } from './types';
+import type { ChartStyle, Symbol, Indicator, IndicatorId, UserPreferences } from './types';
 
 const WATCHLIST_STORAGE_KEY = 'alpha-charts-watchlist';
+const ACTIVE_INDICATORS_STORAGE_KEY = 'alpha-charts-active-indicators';
+const PREFERENCES_STORAGE_KEY = 'alpha-charts-preferences';
+
+const defaultPreferences: UserPreferences = {
+    defaultTimeframe: '1h',
+    theme: 'dark',
+    indicatorPeriods: {
+        sma: 20,
+        ema: 12,
+        rsi: 14,
+        bollingerPeriod: 20,
+        bollingerStdDev: 2,
+        macdFast: 12,
+        macdSlow: 26,
+        macdSignal: 9,
+    },
+    chartColors: {
+        bullish: '#26A69A',
+        bearish: '#EF5350',
+        line: '#42A5F5',
+        grid: '#2F3A48',
+    },
+};
+
+const clamp = (value: number, min: number, fallback: number) =>
+    Number.isFinite(value) && value >= min ? value : fallback;
+
+function sanitizePreferences(raw: UserPreferences): UserPreferences {
+    return {
+        ...defaultPreferences,
+        ...raw,
+        theme: raw.theme === 'light' ? 'light' : 'dark',
+        defaultTimeframe:
+            ['1m', '5m', '15m', '1h', '4h', '1D', '1W'].includes(raw.defaultTimeframe)
+                ? raw.defaultTimeframe
+                : defaultPreferences.defaultTimeframe,
+        indicatorPeriods: {
+            sma: clamp(raw.indicatorPeriods?.sma, 2, defaultPreferences.indicatorPeriods.sma),
+            ema: clamp(raw.indicatorPeriods?.ema, 2, defaultPreferences.indicatorPeriods.ema),
+            rsi: clamp(raw.indicatorPeriods?.rsi, 2, defaultPreferences.indicatorPeriods.rsi),
+            bollingerPeriod: clamp(
+                raw.indicatorPeriods?.bollingerPeriod,
+                2,
+                defaultPreferences.indicatorPeriods.bollingerPeriod,
+            ),
+            bollingerStdDev: clamp(
+                raw.indicatorPeriods?.bollingerStdDev,
+                0.1,
+                defaultPreferences.indicatorPeriods.bollingerStdDev,
+            ),
+            macdFast: clamp(raw.indicatorPeriods?.macdFast, 2, defaultPreferences.indicatorPeriods.macdFast),
+            macdSlow: clamp(raw.indicatorPeriods?.macdSlow, 2, defaultPreferences.indicatorPeriods.macdSlow),
+            macdSignal: clamp(
+                raw.indicatorPeriods?.macdSignal,
+                2,
+                defaultPreferences.indicatorPeriods.macdSignal,
+            ),
+        },
+        chartColors: {
+            bullish: raw.chartColors?.bullish || defaultPreferences.chartColors.bullish,
+            bearish: raw.chartColors?.bearish || defaultPreferences.chartColors.bearish,
+            line: raw.chartColors?.line || defaultPreferences.chartColors.line,
+            grid: raw.chartColors?.grid || defaultPreferences.chartColors.grid,
+        },
+    };
+}
 
 function App() {
     const [chartStyle, setChartStyle] = useState<ChartStyle>('candlestick');
@@ -33,11 +100,22 @@ function App() {
     const [selectedSymbolName, setSelectedSymbolName] = useState(mockWatchlistSymbols[0].symbol);
     const [searchQuery, setSearchQuery] = useState('');
     const [symbolUniverse, setSymbolUniverse] = useState<string[]>([]);
-    const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
+    const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
+    const [selectedTimeframe, setSelectedTimeframe] = useState(defaultPreferences.defaultTimeframe);
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
     const [indicatorDialogOpen, setIndicatorDialogOpen] = useState(false);
-    const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [activeIndicators, setActiveIndicators] = useState<Indicator[]>(() => {
+        try {
+            const raw = localStorage.getItem(ACTIVE_INDICATORS_STORAGE_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw) as Indicator[];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    });
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const toastTimeoutRef = useRef<number | null>(null);
     const selectedSymbol = useMemo(
@@ -53,7 +131,11 @@ function App() {
         selectedTimeframe,
     );
 
-    const { mainIndicators, separateIndicators } = useIndicatorResults(candles, activeIndicators);
+    const { mainIndicators, separateIndicators } = useIndicatorResults(
+        candles,
+        activeIndicators,
+        preferences.indicatorPeriods,
+    );
 
     const dimensions = useChartAreaDimensions({
         watchlistCollapsed,
@@ -73,6 +155,26 @@ function App() {
     };
 
     useEffect(() => {
+        const stored = localStorage.getItem(PREFERENCES_STORAGE_KEY);
+        if (!stored) return;
+        try {
+            const parsed = JSON.parse(stored) as UserPreferences;
+            if (!parsed) return;
+            const merged = sanitizePreferences(parsed);
+            setPreferences(merged);
+            setSelectedTimeframe(merged.defaultTimeframe);
+        } catch {
+            // Ignore malformed saved preferences.
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+        document.documentElement.setAttribute('data-theme', preferences.theme);
+    }, [preferences]);
+
+    useEffect(() => {
         const stored = localStorage.getItem(WATCHLIST_STORAGE_KEY);
         if (!stored) return;
         try {
@@ -89,6 +191,10 @@ function App() {
     useEffect(() => {
         localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(watchlistSymbols));
     }, [watchlistSymbols]);
+
+    useEffect(() => {
+        localStorage.setItem(ACTIVE_INDICATORS_STORAGE_KEY, JSON.stringify(activeIndicators));
+    }, [activeIndicators]);
 
     useEffect(() => {
         fetchExchangeSymbols()
@@ -220,6 +326,7 @@ function App() {
                 onSymbolSearch={handleSearch}
                 searchResults={searchResults}
                 onSelectSearchResult={handleSelectSearchResult}
+                onClearSearch={() => setSearchQuery('')}
                 isConnected={isLive}
             />
             <Toolbar
@@ -231,6 +338,7 @@ function App() {
                 onGridToggle={() => setShowGrid(!showGrid)}
                 showTooltip={showTooltip}
                 onTooltipToggle={() => setShowTooltip(!showTooltip)}
+                onOpenSettings={() => setSettingsOpen(true)}
                 onAddIndicator={() => setIndicatorDialogOpen(true)}
                 onClearDrawings={clearDrawings}
                 activeIndicators={activeIndicators}
@@ -260,6 +368,7 @@ function App() {
                                 height={dimensions.mainChartHeight}
                                 showGrid={showGrid}
                                 showTooltip={showTooltip}
+                                chartColors={preferences.chartColors}
                                 chartStyle={chartStyle}
                                 indicators={mainIndicators}
                                 drawings={drawings}
@@ -274,6 +383,7 @@ function App() {
                                 data={candles}
                                 width={dimensions.chartWidth}
                                 height={VOLUME_CHART_HEIGHT}
+                                chartColors={preferences.chartColors}
                             />
                             {separateIndicators.map((ind) => {
                                 switch (ind.id) {
@@ -320,8 +430,20 @@ function App() {
             />
             <IndicatorDialog
                 isOpen={indicatorDialogOpen}
+                periods={preferences.indicatorPeriods}
                 onClose={() => setIndicatorDialogOpen(false)}
                 onAddIndicator={handleAddIndicator}
+            />
+            <SettingsPanel
+                isOpen={settingsOpen}
+                preferences={preferences}
+                defaultPreferences={defaultPreferences}
+                onClose={() => setSettingsOpen(false)}
+                onSave={(next) => {
+                    setPreferences(next);
+                    setSelectedTimeframe(next.defaultTimeframe);
+                    showToast('Settings saved.');
+                }}
             />
         </div>
     );
