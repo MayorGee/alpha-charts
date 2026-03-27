@@ -6,6 +6,7 @@ export function Watchlist({
     symbols,
     selectedSymbol,
     onSelectSymbol,
+    onRemoveSymbol,
     isCollapsed,
     onToggleCollapse,
 }: WatchlistProps) {
@@ -58,8 +59,7 @@ export function Watchlist({
                                     role='button'
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        // Handle remove from watchlist later
-                                        console.log('Remove', symbol.symbol);
+                                        onRemoveSymbol(symbol.symbol);
                                     }}
                                 >
                                     <X />

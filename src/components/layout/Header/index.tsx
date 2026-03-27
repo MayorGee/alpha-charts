@@ -2,9 +2,18 @@ import { Search, Wifi } from 'lucide-react';
 import type { HeaderProps } from '../../../types/props';
 import './header.scss';
 
-export function Header({ symbol, onSymbolSearch, isConnected }: HeaderProps) {
-    const changeClass = symbol.change24h >= 0 ? 'header__stats-value--positive' : 'header__stats-value--negative';
-    const changeSign = symbol.change24h >= 0 ? '+' : '';
+export function Header({
+    symbol,
+    searchQuery,
+    onSymbolSearch,
+    searchResults,
+    onSelectSearchResult,
+    isConnected,
+}: HeaderProps) {
+    const safeChange24h = Number.isFinite(symbol.change24h) ? symbol.change24h : 0;
+    const changeClass = safeChange24h >= 0 ? 'header__stats-value--positive' : 'header__stats-value--negative';
+    const changeSign = safeChange24h >= 0 ? '+' : '';
+    const shouldShowResults = searchQuery.trim().length > 0;
 
     return (
         <header className="header">
@@ -15,8 +24,27 @@ export function Header({ symbol, onSymbolSearch, isConnected }: HeaderProps) {
                     type="text"
                     placeholder="Search symbol..."
                     className="header__search-input"
+                    value={searchQuery}
                     onChange={(e) => onSymbolSearch(e.target.value)}
                 />
+                {shouldShowResults && (
+                    <div className="header__search-results">
+                        {searchResults.length > 0 ? (
+                            searchResults.map((result) => (
+                                <button
+                                    key={result.symbol}
+                                    className="header__search-result"
+                                    onClick={() => onSelectSearchResult(result)}
+                                >
+                                    <span>{result.symbol}</span>
+                                    <span>${result.price.toFixed(2)}</span>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="header__search-empty">No matching symbols</div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Current Price Info */}
@@ -32,7 +60,7 @@ export function Header({ symbol, onSymbolSearch, isConnected }: HeaderProps) {
                     <div className="header__stats-item">
                         <span className="header__stats-label">24h Change: </span>
                         <span className={`header__stats-value ${changeClass}`}>
-                            {changeSign}{symbol.change24h.toFixed(2)}%
+                            {changeSign}{safeChange24h.toFixed(2)}%
                         </span>
                     </div>
                     <div className="header__stats-item">

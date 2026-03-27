@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { CandlestickChartProps } from '../../../types/props';
 import type { Candle, TooltipData } from '../../../types';
 import { useChartDrawingInteractions } from '../../../hooks/useChartDrawingInteractions';
 import './candlestick-chart.scss';
 
-export const CandlestickChart: React.FC<CandlestickChartProps> = ({
+export const CandlestickChart = memo(({
     data,
     width,
     height,
@@ -17,8 +17,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     onAddDrawing,
     onUpdateDrawing,
     onDeleteDrawing,
+    onReachLeftEdge,
+    isLoadingMoreHistory,
     activeTool
-}) => {
+}: CandlestickChartProps) => {
     const fibLevelConfigs = [
         { value: 0, color: '#ef5350' },
         { value: 0.236, color: '#ff7043' },
@@ -29,9 +31,11 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         { value: 1, color: '#ab47bc' },
     ] as const;
     const svgRef = useRef<SVGSVGElement>(null);
+    const leftEdgeRequestCooldownRef = useRef(0);
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
     const [crosshair, setCrosshair] = useState<{ x: number; y: number } | null>(null);
     const [zoomTransform, setZoomTransform] = useState(d3.zoomIdentity);
+    const [isPanning, setIsPanning] = useState(false);
     const {
         drawingStart,
         drawingPreviewEnd,
@@ -85,8 +89,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             .range([chartHeight, 0]);
         const xScale = zoomTransform.rescaleX(baseXScale);
         const yScale = zoomTransform.rescaleY(baseYScale);
-        const [xMin, xMax] = xScale.domain();
-        const visibleCandles = data.filter((d) => d.time >= xMin && d.time <= xMax);
         const firstTime = data[0]?.time.getTime();
         const lastTime = data[data.length - 1]?.time.getTime();
         const minPrice = d3.min(data, (d) => d.low);
@@ -122,14 +124,17 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         }
 
         if (chartStyle === 'candlestick') {
-            // Candlestick width
-            const visibleCount = Math.max(1, visibleCandles.length);
-            const candleWidth = Math.max(1, Math.min(chartWidth / visibleCount - 2, 20));
+            // Derive candle width from zoomed x-spacing, not viewport filtering.
+            const xSpacing =
+                data.length > 1
+                    ? Math.abs(xScale(data[1].time) - xScale(data[0].time))
+                    : chartWidth;
+            const candleWidth = Math.max(1, Math.min(xSpacing - 2, 20));
 
             // Draw candlesticks
             const candles = g
                 .selectAll('.candle')
-                .data(visibleCandles)
+                .data(data)
                 .join('g')
                 .attr('class', 'candle')
                 .attr('transform', (d) => `translate(${xScale(d.time)},0)`);
@@ -406,10 +411,19 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     d3.select(this).style('cursor', 'default');
                     return;
                 }
-                d3.select(this).style(
-                    'cursor',
-                    getOverlayCursor({ mouseX, mouseY, activeTool, drawings, xScale, yScale }),
-                );
+                if (isPanning) {
+                    d3.select(this).style('cursor', 'grabbing');
+                } else {
+                    const interactionCursor = getOverlayCursor({
+                        mouseX,
+                        mouseY,
+                        activeTool,
+                        drawings,
+                        xScale,
+                        yScale,
+                    });
+                    d3.select(this).style('cursor', interactionCursor);
+                }
 
                 handleDrawingPreviewMove({
                     mouseX,
@@ -425,7 +439,8 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     showTooltip &&
                     (!activeTool || activeTool === 'none') &&
                     !deleteModal &&
-                    !isDragging;
+                    !isDragging &&
+                    !isPanning;
                 if (allowHoverTooltip) {
                     // crosshair logic
                     const x = xScale.invert(mouseX);
@@ -474,6 +489,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         drawingStart,
         drawingPreviewEnd,
         isDragging,
+        isPanning,
         zoomTransform,
         handleOverlayClick,
         handleOverlayMouseDown,
@@ -488,36 +504,68 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         if (!svgRef.current || width <= 0 || height <= 0) return;
 
         const svg = d3.select(svgRef.current);
+        const margin = { top: 20, right: 80, bottom: 20, left: 10 };
+        const chartWidth = width - margin.left - margin.right;
+
         const zoomBehavior = d3
             .zoom<SVGSVGElement, unknown>()
             .scaleExtent([1, 24])
-            .translateExtent([
-                [-width * 2, -height * 2],
-                [width * 3, height * 3],
-            ])
-            .extent([
-                [0, 0],
-                [width, height],
-            ])
+            .translateExtent([[-width * 2, -height * 2], [width * 3, height * 3]])
+            .extent([[0, 0], [width, height]])
             .filter((event) => {
                 if (activeTool && activeTool !== 'none') return false;
                 if (deleteModal) return false;
                 return event.type === 'wheel' || event.type === 'mousedown' || event.type === 'dblclick';
             })
+            .on('start', (event) => {
+                if (event.sourceEvent?.type === 'mousedown') {
+                    setIsPanning(true);
+                }
+            })
             .on('zoom', (event) => {
                 const t = event.transform;
+                const minX = chartWidth - chartWidth * t.k;
+                const maxX = 0;
+                const clampedX = Math.max(minX, Math.min(maxX, t.x));
+                const chartHeight = height - margin.top - margin.bottom;
+                const yOverscroll = chartHeight * 0.25;
+                const minY = chartHeight - chartHeight * t.k - yOverscroll;
+                const maxY = yOverscroll;
+                const clampedY = Math.max(minY, Math.min(maxY, t.y));
+                const clampedTransform = d3.zoomIdentity.translate(clampedX, clampedY).scale(t.k);
+
                 setZoomTransform((prev) =>
-                    prev.k === t.k && prev.x === t.x && prev.y === t.y ? prev : t,
+                    prev.k === clampedTransform.k &&
+                    prev.x === clampedTransform.x &&
+                    prev.y === clampedTransform.y
+                        ? prev
+                        : clampedTransform,
                 );
+            })
+            .on('end', (event) => {
+                setIsPanning(false);
+                if (!onReachLeftEdge || isLoadingMoreHistory) return;
+
+                const t = event.transform;
+                const minX = chartWidth - chartWidth * t.k;
+                const maxX = 0;
+                const clampedX = Math.max(minX, Math.min(maxX, t.x));
+                const nearLeftEdge = clampedX <= minX + 1;
+                const now = performance.now();
+
+                if (nearLeftEdge && now > leftEdgeRequestCooldownRef.current) {
+                    leftEdgeRequestCooldownRef.current = now + 900;
+                    onReachLeftEdge();
+                }
             });
 
         svg.call(zoomBehavior);
-        svg.call(zoomBehavior.transform, zoomTransform);
 
         return () => {
+            setIsPanning(false);
             svg.on('.zoom', null);
         };
-    }, [activeTool, deleteModal, width, height, zoomTransform]);
+    }, [activeTool, deleteModal, width, height, onReachLeftEdge, isLoadingMoreHistory]);
 
     return (
         <div className="candlestick-chart-container">
@@ -607,4 +655,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             )}
         </div>
     );
-};
+});
+
+CandlestickChart.displayName = 'CandlestickChart';

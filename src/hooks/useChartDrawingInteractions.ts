@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type * as d3 from 'd3';
 import type { Drawing } from '../types/drawing';
 import type { DrawingTool } from '../types';
@@ -66,7 +66,7 @@ interface ResizeState {
 }
 
 export function useChartDrawingInteractions() {
-    const fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+    const fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
     const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null);
     const [drawingPreviewEnd, setDrawingPreviewEnd] = useState<{ x: number; y: number } | null>(null);
     const [deleteModal, setDeleteModal] = useState<DeleteModalState | null>(null);
@@ -77,18 +77,18 @@ export function useChartDrawingInteractions() {
     const suppressNextClickRef = useRef(false);
     const ignoreClickUntilRef = useRef(0);
 
-    const clearDragAndResizeState = () => {
+    const clearDragAndResizeState = useCallback(() => {
         dragStateRef.current = null;
         resizeStateRef.current = null;
         setIsDragging(false);
-    };
+    }, []);
 
-    const suppressUpcomingClick = (durationMs = 220) => {
+    const suppressUpcomingClick = useCallback((durationMs = 220) => {
         suppressNextClickRef.current = true;
         ignoreClickUntilRef.current = performance.now() + durationMs;
-    };
+    }, []);
 
-    const pointToSegmentDistance = (
+    const pointToSegmentDistance = useCallback((
         point: { x: number; y: number },
         segmentStart: { x: number; y: number },
         segmentEnd: { x: number; y: number },
@@ -111,9 +111,9 @@ export function useChartDrawingInteractions() {
         const projX = segmentStart.x + t * dx;
         const projY = segmentStart.y + t * dy;
         return Math.hypot(point.x - projX, point.y - projY);
-    };
+    }, []);
 
-    const findDrawingIdAtPosition = (
+    const findDrawingIdAtPosition = useCallback((
         mouseX: number,
         mouseY: number,
         drawings: Drawing[] | undefined,
@@ -160,13 +160,13 @@ export function useChartDrawingInteractions() {
         }
 
         return null;
-    };
+    }, [fibLevels, pointToSegmentDistance]);
 
-    const screenToDomain = (mouseX: number, mouseY: number, { xScale, yScale }: ScaleArgs) => {
+    const screenToDomain = useCallback((mouseX: number, mouseY: number, { xScale, yScale }: ScaleArgs) => {
         return { x: xScale.invert(mouseX).getTime(), y: yScale.invert(mouseY) };
-    };
+    }, []);
 
-    const findFibonacciHandleAtPosition = (
+    const findFibonacciHandleAtPosition = useCallback((
         mouseX: number,
         mouseY: number,
         drawings: Drawing[] | undefined,
@@ -191,9 +191,9 @@ export function useChartDrawingInteractions() {
         }
 
         return null;
-    };
+    }, []);
 
-    const handleOverlayClick = ({
+    const handleOverlayClick = useCallback(({
         mouseX,
         mouseY,
         clientX,
@@ -266,9 +266,9 @@ export function useChartDrawingInteractions() {
                 color: '#FFFFFF',
             });
         }
-    };
+    }, [clearDragAndResizeState, deleteModal, drawingStart, findDrawingIdAtPosition, screenToDomain]);
 
-    const getOverlayCursor = ({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: HoverArgs) => {
+    const getOverlayCursor = useCallback(({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: HoverArgs) => {
         if (resizeStateRef.current) return 'nwse-resize';
         if (isDragging) return 'grabbing';
         const hoveredHandle = findFibonacciHandleAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
@@ -277,9 +277,9 @@ export function useChartDrawingInteractions() {
         if (hoveredDrawingId) return 'pointer';
         if (activeTool && activeTool !== 'none') return 'crosshair';
         return 'default';
-    };
+    }, [findDrawingIdAtPosition, findFibonacciHandleAtPosition, isDragging]);
 
-    const handleOverlayMouseDown = ({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: MouseDownArgs) => {
+    const handleOverlayMouseDown = useCallback(({ mouseX, mouseY, activeTool, drawings, xScale, yScale }: MouseDownArgs) => {
         if (deleteModal) return;
         if (activeTool && activeTool !== 'none') return;
         const fibHandle = findFibonacciHandleAtPosition(mouseX, mouseY, drawings, { xScale, yScale });
@@ -300,9 +300,9 @@ export function useChartDrawingInteractions() {
         hasMovedDuringDragRef.current = false;
         setDeleteModal(null);
         setIsDragging(true);
-    };
+    }, [deleteModal, findDrawingIdAtPosition, findFibonacciHandleAtPosition, screenToDomain]);
 
-    const handleDrawingPreviewMove = ({
+    const handleDrawingPreviewMove = useCallback(({
         mouseX,
         mouseY,
         activeTool,
@@ -346,9 +346,9 @@ export function useChartDrawingInteractions() {
         if (activeTool && activeTool !== 'none' && drawingStart) {
             setDrawingPreviewEnd(screenToDomain(mouseX, mouseY, { xScale, yScale }));
         }
-    };
+    }, [deleteModal, drawingStart, screenToDomain]);
 
-    const handleOverlayMouseUp = ({ onUpdateDrawing }: MouseUpArgs) => {
+    const handleOverlayMouseUp = useCallback(({ onUpdateDrawing }: MouseUpArgs) => {
         if (deleteModal) return;
         if (!onUpdateDrawing) return;
         if (resizeStateRef.current) {
@@ -359,26 +359,26 @@ export function useChartDrawingInteractions() {
         if (!dragStateRef.current) return;
         suppressUpcomingClick();
         clearDragAndResizeState();
-    };
+    }, [clearDragAndResizeState, deleteModal, suppressUpcomingClick]);
 
-    const resetDrawingInteraction = () => {
+    const resetDrawingInteraction = useCallback(() => {
         clearDragAndResizeState();
         hasMovedDuringDragRef.current = false;
         setDrawingStart(null);
         setDrawingPreviewEnd(null);
-    };
+    }, [clearDragAndResizeState]);
 
-    const closeDeleteModal = () => {
+    const closeDeleteModal = useCallback(() => {
         clearDragAndResizeState();
         suppressUpcomingClick();
         setDeleteModal(null);
-    };
+    }, [clearDragAndResizeState, suppressUpcomingClick]);
 
-    const confirmDeleteDrawing = (onDeleteDrawing?: DeleteDrawingHandler) => {
+    const confirmDeleteDrawing = useCallback((onDeleteDrawing?: DeleteDrawingHandler) => {
         if (!deleteModal || !onDeleteDrawing) return;
         onDeleteDrawing(deleteModal.drawingId);
         setDeleteModal(null);
-    };
+    }, [deleteModal]);
 
     return {
         drawingStart,

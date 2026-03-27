@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { type Candle } from '../types';
 import { fetchKlines } from '../lib/api/binanceRest';
 import { binanceWs } from '../lib/websocket/binanceWs';
@@ -6,8 +6,10 @@ import { binanceWs } from '../lib/websocket/binanceWs';
 export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
     const [candles, setCandles] = useState<Candle[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLive, setIsLive] = useState(false);
+    const [hasMoreHistory, setHasMoreHistory] = useState(true);
 
     // Fetch historical data
     useEffect(() => {
@@ -20,6 +22,7 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
                 if (mounted) {
                     setCandles(data);
                     setLoading(false);
+                    setHasMoreHistory(true);
                 }
             })
             .catch((err) => {
@@ -34,6 +37,33 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
         };
     }, [symbol, timeframe, limit]);
 
+    const loadOlderHistory = useCallback(async () => {
+        if (loading || loadingMoreHistory || !hasMoreHistory || candles.length === 0) return;
+        setLoadingMoreHistory(true);
+        try {
+            const oldest = candles[0].time.getTime();
+            const older = await fetchKlines(symbol, timeframe, limit, oldest - 1);
+            if (older.length === 0) {
+                setHasMoreHistory(false);
+                return;
+            }
+
+            setCandles((prev) => {
+                const existing = new Set(prev.map((c) => c.time.getTime()));
+                const uniqueOlder = older.filter((c) => !existing.has(c.time.getTime()));
+                return [...uniqueOlder, ...prev];
+            });
+
+            if (older.length < limit) {
+                setHasMoreHistory(false);
+            }
+        } catch {
+            // Keep existing candles; user can retry by panning to the edge again.
+        } finally {
+            setLoadingMoreHistory(false);
+        }
+    }, [candles, hasMoreHistory, limit, loading, loadingMoreHistory, symbol, timeframe]);
+
     // WebSocket live updates
     useEffect(() => {
         if (candles.length === 0) return;
@@ -46,9 +76,9 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
                     // Update last candle
                     return [...prev.slice(0, -1), newCandle];
                 } else {
-                    // New candle – append, keep limit
+                    // New candle – append (keep history for left backfill scroll)
                     const updated = [...prev, newCandle];
-                    return updated.length > limit ? updated.slice(updated.length - limit) : updated;
+                    return updated;
                 }
             });
         };
@@ -63,5 +93,5 @@ export function useBinanceData(symbol: string, timeframe: string, limit = 500) {
         };
     }, [symbol, timeframe, limit]);
 
-    return { candles, loading, error, isLive };
+    return { candles, loading, loadingMoreHistory, hasMoreHistory, loadOlderHistory, error, isLive };
 }

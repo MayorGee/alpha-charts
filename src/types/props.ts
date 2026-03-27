@@ -12,7 +12,10 @@ import type {
 
 export interface HeaderProps {
     symbol: Symbol;
+    searchQuery: string;
     onSymbolSearch: (query: string) => void;
+    searchResults: Symbol[];
+    onSelectSearchResult: (symbol: Symbol) => void;
     isConnected: boolean;
 }
 
@@ -35,6 +38,7 @@ export interface WatchlistProps {
     symbols: Symbol[];
     selectedSymbol: string;
     onSelectSymbol: (symbol: Symbol) => void;
+    onRemoveSymbol: (symbolName: string) => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
 }
@@ -62,6 +66,8 @@ export interface CandlestickChartProps {
     onAddDrawing?: (drawing: Omit<Drawing, 'id' | 'createdAt'>) => void;
     onUpdateDrawing?: (id: string, updates: Partial<Drawing>) => void;
     onDeleteDrawing?: (id: string) => void;
+    onReachLeftEdge?: () => void;
+    isLoadingMoreHistory?: boolean;
     activeTool?: DrawingTool;
 }
 

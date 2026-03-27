@@ -1,5 +1,5 @@
 import { Environment } from '../Environment';
-import { type Candle } from '../../types';
+import { type Candle, type Symbol } from '../../types';
 
 const intervalMap: Record<string, string> = {
     '1m': '1m',
@@ -14,7 +14,8 @@ const intervalMap: Record<string, string> = {
 export async function fetchKlines(
     symbol: string,
     interval: string,
-    limit = 500
+    limit = 500,
+    endTime?: number,
 ): Promise<Candle[]> {
     const binanceInterval = intervalMap[interval];
     if (!binanceInterval) throw new Error(`Unsupported interval: ${interval}`);
@@ -29,6 +30,9 @@ export async function fetchKlines(
     url.searchParams.append('symbol', binanceSymbol);
     url.searchParams.append('interval', binanceInterval);
     url.searchParams.append('limit', limit.toString());
+    if (endTime !== undefined) {
+        url.searchParams.append('endTime', endTime.toString());
+    }
 
     const response = await fetch(url.toString());
     if (!response.ok) {
@@ -45,4 +49,55 @@ export async function fetchKlines(
         close: parseFloat(kline[4]),
         volume: parseFloat(kline[5]),
     }));
+}
+
+function getRestUrl(path: string) {
+    const baseUrl = Environment.binanceRestBaseUrl;
+    return baseUrl
+        ? new URL(`${baseUrl}${path}`)
+        : new URL(`/api/v3${path}`, window.location.origin);
+}
+
+function binanceToDisplaySymbol(symbol: string) {
+    if (symbol.endsWith('USDT')) return `${symbol.slice(0, -4)}/USDT`;
+    return symbol;
+}
+
+function displayToBinanceSymbol(symbol: string) {
+    return symbol.replace('/', '').toUpperCase();
+}
+
+export async function fetchExchangeSymbols(): Promise<string[]> {
+    const url = getRestUrl('/exchangeInfo');
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    const rawSymbols: string[] = (data.symbols ?? [])
+        .filter((s: any) => s.status === 'TRADING' && s.quoteAsset === 'USDT')
+        .map((s: any) => s.symbol);
+
+    return rawSymbols.map(binanceToDisplaySymbol).sort();
+}
+
+export async function fetch24hrTicker(symbol: string): Promise<Symbol> {
+    const url = getRestUrl('/ticker/24hr');
+    url.searchParams.append('symbol', displayToBinanceSymbol(symbol));
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+
+    const t = await response.json();
+    return {
+        symbol,
+        price: Number.parseFloat(t.lastPrice),
+        change24h: Number.parseFloat(t.priceChangePercent),
+        high24h: Number.parseFloat(t.highPrice),
+        low24h: Number.parseFloat(t.lowPrice),
+        volume24h: Number.parseFloat(t.quoteVolume),
+    };
 }

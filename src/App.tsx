@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from './components/layout/Header';
 import { Toolbar } from './components/layout/Toolbar';
 import { Watchlist } from './components/layout/Watchlist';
@@ -12,8 +12,10 @@ import { MACDPane } from './components/chart/MACDPane';
 import { useBinanceData } from './hooks/useBinanceData';
 import { useIndicatorResults } from './hooks/useIndicatorResults';
 import { useChartAreaDimensions } from './hooks/useChartAreaDimensions';
+import { useWatchlistTicker } from './hooks/useWatchlistTicker';
 import { useDrawing } from './contexts/DrawingContext';
 import { mockWatchlistSymbols } from './data/mockWatchlistSymbols';
+import { fetch24hrTicker, fetchExchangeSymbols } from './lib/api/binanceRest';
 import {
     VOLUME_CHART_HEIGHT,
     INDICATOR_PANE_HEIGHT,
@@ -21,11 +23,16 @@ import {
 } from './constants/chartLayout';
 import type { ChartStyle, Symbol, Indicator, IndicatorId } from './types';
 
+const WATCHLIST_STORAGE_KEY = 'alpha-charts-watchlist';
+
 function App() {
     const [chartStyle, setChartStyle] = useState<ChartStyle>('candlestick');
     const [showGrid, setShowGrid] = useState(true);
     const [showTooltip, setShowTooltip] = useState(true);
-    const [selectedSymbol, setSelectedSymbol] = useState<Symbol>(mockWatchlistSymbols[0]);
+    const [watchlistSymbols, setWatchlistSymbols] = useState<Symbol[]>(mockWatchlistSymbols);
+    const [selectedSymbolName, setSelectedSymbolName] = useState(mockWatchlistSymbols[0].symbol);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [symbolUniverse, setSymbolUniverse] = useState<string[]>([]);
     const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
     const [orderPanelCollapsed, setOrderPanelCollapsed] = useState(false);
@@ -33,8 +40,15 @@ function App() {
     const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const toastTimeoutRef = useRef<number | null>(null);
+    const selectedSymbol = useMemo(
+        () =>
+            watchlistSymbols.find((s) => s.symbol === selectedSymbolName) ??
+            watchlistSymbols[0] ??
+            mockWatchlistSymbols[0],
+        [selectedSymbolName, watchlistSymbols],
+    );
 
-    const { candles, loading, error, isLive } = useBinanceData(
+    const { candles, loading, loadingMoreHistory, loadOlderHistory, error, isLive } = useBinanceData(
         selectedSymbol.symbol,
         selectedTimeframe,
     );
@@ -58,10 +72,65 @@ function App() {
         }, durationMs);
     };
 
-    const handleSearch = (query: string) => {
-        const trimmed = query.trim();
-        if (!trimmed) return;
-        showToast(`Search for "${trimmed}" is not implemented yet.`);
+    useEffect(() => {
+        const stored = localStorage.getItem(WATCHLIST_STORAGE_KEY);
+        if (!stored) return;
+        try {
+            const parsed = JSON.parse(stored) as Symbol[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setWatchlistSymbols(parsed);
+                setSelectedSymbolName(parsed[0].symbol);
+            }
+        } catch {
+            // Ignore corrupted storage and continue with defaults.
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(watchlistSymbols));
+    }, [watchlistSymbols]);
+
+    useEffect(() => {
+        fetchExchangeSymbols()
+            .then(setSymbolUniverse)
+            .catch(() => showToast('Could not load Binance symbols.'));
+    }, []);
+
+    const searchResults = useMemo(() => {
+        const q = searchQuery.trim().toUpperCase().replace('/', '');
+        if (!q) return [];
+        return symbolUniverse
+            .filter((symbol) => symbol.replace('/', '').startsWith(q))
+            .slice(0, 20)
+            .map((name) => {
+                const existing = watchlistSymbols.find((s) => s.symbol === name);
+                return (
+                    existing ?? {
+                        symbol: name,
+                        price: 0,
+                        change24h: 0,
+                        high24h: 0,
+                        low24h: 0,
+                        volume24h: 0,
+                    }
+                );
+            });
+    }, [searchQuery, symbolUniverse, watchlistSymbols]);
+
+    const handleSearch = (query: string) => setSearchQuery(query);
+
+    const handleSelectSearchResult = async (result: Symbol) => {
+        try {
+            const full = await fetch24hrTicker(result.symbol);
+            setWatchlistSymbols((prev) => {
+                const exists = prev.some((s) => s.symbol === full.symbol);
+                return exists ? prev.map((s) => (s.symbol === full.symbol ? full : s)) : [full, ...prev];
+            });
+            setSelectedSymbolName(full.symbol);
+            setSearchQuery('');
+        } catch {
+            showToast(`Could not fetch data for ${result.symbol}`);
+        }
     };
 
     const handleAddIndicator = (indicator: Indicator) => {
@@ -77,7 +146,21 @@ function App() {
     };
 
     const handleSelectSymbol = (symbol: Symbol) => {
-        setSelectedSymbol(symbol);
+        setSelectedSymbolName(symbol.symbol);
+    };
+
+    const handleRemoveSymbol = (symbolName: string) => {
+        setWatchlistSymbols((prev) => {
+            if (prev.length <= 1) {
+                showToast('Watchlist must contain at least one symbol.');
+                return prev;
+            }
+            const updated = prev.filter((s) => s.symbol !== symbolName);
+            if (selectedSymbolName === symbolName) {
+                setSelectedSymbolName(updated[0].symbol);
+            }
+            return updated;
+        });
     };
 
     const {
@@ -90,6 +173,40 @@ function App() {
         clearDrawings,
     } = useDrawing();
 
+    const handleTickerUpdate = useCallback(
+        (
+            symbolName: string,
+            ticker: {
+                price: number;
+                change24h: number;
+                high24h: number;
+                low24h: number;
+                volume24h: number;
+            },
+        ) => {
+            setWatchlistSymbols((prev) =>
+                prev.map((s) =>
+                    s.symbol === symbolName
+                        ? {
+                              ...s,
+                              price: ticker.price,
+                              change24h: ticker.change24h,
+                              high24h: ticker.high24h,
+                              low24h: ticker.low24h,
+                              volume24h: ticker.volume24h,
+                          }
+                        : s,
+                ),
+            );
+        },
+        [],
+    );
+
+    useWatchlistTicker(
+        useMemo(() => watchlistSymbols.map((s) => s.symbol), [watchlistSymbols]),
+        handleTickerUpdate,
+    );
+
     return (
         <div className="app">
             {toastMessage && (
@@ -99,7 +216,10 @@ function App() {
             )}
             <Header
                 symbol={selectedSymbol}
+                searchQuery={searchQuery}
                 onSymbolSearch={handleSearch}
+                searchResults={searchResults}
+                onSelectSearchResult={handleSelectSearchResult}
                 isConnected={isLive}
             />
             <Toolbar
@@ -118,9 +238,10 @@ function App() {
             />
             <div className="app-main">
                 <Watchlist
-                    symbols={mockWatchlistSymbols}
-                    selectedSymbol={selectedSymbol.symbol}
+                    symbols={watchlistSymbols}
+                    selectedSymbol={selectedSymbolName}
                     onSelectSymbol={handleSelectSymbol}
+                    onRemoveSymbol={handleRemoveSymbol}
                     isCollapsed={watchlistCollapsed}
                     onToggleCollapse={() => setWatchlistCollapsed(!watchlistCollapsed)}
                 />
@@ -145,6 +266,8 @@ function App() {
                                 onAddDrawing={addDrawing}
                                 onUpdateDrawing={updateDrawing}
                                 onDeleteDrawing={deleteDrawing}
+                                onReachLeftEdge={loadOlderHistory}
+                                isLoadingMoreHistory={loadingMoreHistory}
                                 activeTool={activeTool}
                             />
                             <VolumeChart
